@@ -35,9 +35,9 @@ export default async function Home() {
           </div>
           <div className="hero__plane hero__near" data-sc-parallax="-1.8">
             <picture>
-              <source media="(max-width: 700px)" srcSet="/media/hero/hero-near-v6-m.webp" />
+              <source media="(max-width: 700px)" srcSet="/media/hero/hero-near-v7-m.webp" />
               <img
-                src="/media/hero/hero-near-v6.webp"
+                src="/media/hero/hero-near-v7.webp"
                 alt="Ama Dablam above stone memorial cairns and prayer flags on the trail in the Khumbu"
                 width={2400} height={2000} fetchPriority="high" decoding="async"
               />
