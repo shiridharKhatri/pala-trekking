@@ -26,11 +26,14 @@ export function Altimeter() {
   const needleRef = useRef<HTMLDivElement>(null);
   const valueRef = useRef<HTMLElement>(null);
   const [label, setLabel] = useState("");
-  const [active, setActive] = useState(false);
 
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    // Visibility lives on the element itself (data-active), never in React
+    // state, so a client-side navigation can't leave a stale "visible" behind.
+    const setActive = (on: boolean) => { root.dataset.active = on ? "true" : "false"; };
+    setActive(false);
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     let markers: HTMLElement[] = [];
     let hiders: HTMLElement[] = [];
@@ -85,6 +88,8 @@ export function Altimeter() {
       }
       const nextHidden = hide || target == null;
       if (nextHidden !== hidden) { hidden = nextHidden; setActive(!hidden); }
+      // Re-assert every frame: cheap, and self-heals any desync.
+      else if ((root.dataset.active === "true") === hidden) setActive(!hidden);
       if (target != null) {
         const diff = target - shown;
         shown = reduce || Math.abs(diff) < 0.5 ? target : shown + diff * 0.12;
@@ -102,6 +107,7 @@ export function Altimeter() {
     addEventListener("scroll", kick, { passive: true });
     addEventListener("resize", kick);
     return () => {
+      setActive(false);
       mo.disconnect();
       removeEventListener("scroll", kick);
       removeEventListener("resize", kick);
@@ -110,7 +116,7 @@ export function Altimeter() {
   }, [pathname]);
 
   return (
-    <div ref={rootRef} className="altimeter" data-active={active} aria-hidden="true">
+    <div ref={rootRef} className="altimeter" data-active="false" aria-hidden="true">
       <div className="altimeter__scale">
         {TICKS.map((t) => (
           <div key={t} className="altimeter__tick" style={{ top: `${100 - (t / MAX) * 100}%` }}>
