@@ -14,9 +14,12 @@ import { Ascent } from "@/components/Ascent";
 import { DepartureBoard } from "@/components/DepartureBoard";
 import { ChargeNote, Price } from "@/components/CurrencyProvider";
 import { CompareToggle } from "@/components/Compare";
-import { difficultyLabel, feet, gatewayLabel, metres } from "@/lib/format";
+import { difficultyLabel, feet, gatewayLabel } from "@/lib/format";
 import { bookable } from "@/lib/departures";
 import { HeroSkeleton } from "@/components/Skeletons";
+import { TrekMap } from "@/components/TrekMap";
+import { CountUp } from "@/components/CountUp";
+import { SaveToggle } from "@/components/Saved";
 
 export async function generateStaticParams() {
   const slugs = await getPublishedSlugs();
@@ -104,9 +107,9 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
 
       <section className="wrap section--tight" aria-label="Key facts">
         <dl className="facts">
-          <div><dt>Duration</dt><dd>{trek.durationDays} days</dd></div>
+          <div><dt>Duration</dt><dd><CountUp value={trek.durationDays} suffix=" days" /></dd></div>
           <div><dt>Difficulty</dt><dd>{difficultyLabel[trek.difficulty]}</dd></div>
-          <div><dt>Maximum altitude</dt><dd>{metres(trek.maxAltitudeM)}<small>{feet(trek.maxAltitudeM)}</small></dd></div>
+          <div><dt>Maximum altitude</dt><dd><CountUp value={trek.maxAltitudeM} suffix=" m" /><small>{feet(trek.maxAltitudeM)}</small></dd></div>
           <div><dt>Daily walking</dt><dd>{trek.walkingHoursMin} to {trek.walkingHoursMax} hours</dd></div>
           <div><dt>Best season</dt><dd>{trek.bestSeason}</dd></div>
           <div><dt>Gateway</dt><dd>{gatewayLabel[trek.gateway]}</dd></div>
@@ -178,9 +181,22 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
                 <Link className="btn btn--block" href={`/book/${trek.slug}`}>Request booking</Link>
               </>
             )}
-            <CompareToggle slug={trek.slug} name={trek.name} />
+            <div style={{ display: "flex", gap: "var(--sc-2)", alignItems: "center" }}>
+              <CompareToggle slug={trek.slug} name={trek.name} />
+              <SaveToggle slug={trek.slug} name={trek.name} />
+            </div>
           </aside>
         </div>
+      </section>
+
+      <section className="wrap section--tight" aria-labelledby="where-title">
+        <div className="split-head">
+          <div>
+            <h2 id="where-title" className="display display--md">Where you sleep</h2>
+            <p className="lede" style={{ marginTop: "0.5rem" }}>Each night&apos;s stop on the real terrain. Point at one to find its day.</p>
+          </div>
+        </div>
+        <TrekMap itinerary={trek.itinerary} stayPoints={stayPoints} trekName={trek.name} />
       </section>
 
       <section className="wrap section" aria-labelledby="itinerary-title">

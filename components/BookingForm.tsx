@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { submitBooking, type FormState } from "@/lib/actions/public";
 import type { Experience, PublicDeparture } from "@/lib/types";
 import { addDays, convert, date, money } from "@/lib/format";
@@ -28,6 +28,37 @@ export function BookingForm({ trek, departures, experiences, countries, initialD
   const [travellers, setTravellers] = useState(1);
   const [added, setAdded] = useState<string[]>(experiences.some((e) => e.id === initialAddOn) ? [initialAddOn] : []);
   const err = state.errors ?? {};
+  const formRef = useRef<HTMLFormElement>(null);
+  const [current, setCurrent] = useState(0);
+  const [detailsOk, setDetailsOk] = useState(false);
+  const [confirmOk, setConfirmOk] = useState(false);
+
+  // Which step is on screen: drives the progress bar.
+  useEffect(() => {
+    const steps = Array.from(formRef.current?.querySelectorAll<HTMLElement>("fieldset.step") ?? []);
+    const io = new IntersectionObserver((entries) => {
+      const seen = entries.filter((e) => e.isIntersecting).map((e) => steps.indexOf(e.target as HTMLElement));
+      if (seen.length) setCurrent(Math.min(...seen));
+    }, { rootMargin: "-35% 0px -55% 0px" });
+    steps.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
+  // Completion is read from the form's own validity, so it matches what submit checks.
+  const checkProgress = () => {
+    const f = formRef.current;
+    if (!f) return;
+    const ok = (n: string) => { const el = f.elements.namedItem(n) as HTMLInputElement | null; return !!el && el.checkValidity() && el.value.trim() !== ""; };
+    setDetailsOk(["name", "email", "phone", "country"].every(ok));
+    setConfirmOk(["terms", "cancellation", "privacy", "fitness"].every((n) => (f.elements.namedItem(n) as HTMLInputElement | null)?.checked));
+  };
+  const goStep = (i: number) => {
+    const el = formRef.current?.querySelectorAll<HTMLElement>("fieldset.step")[i];
+    if (!el) return;
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    el.querySelector<HTMLElement>("input:not([type=hidden]):not([disabled]), select, textarea")?.focus({ preventScroll: true });
+  };
 
   const chosen = departures.find((d) => d.id === dep);
   const addOns = experiences.filter((e) => added.includes(e.id));
@@ -43,8 +74,16 @@ export function BookingForm({ trek, departures, experiences, countries, initialD
   const invalid = (k: string) => (err[k] ? { "aria-invalid": true as const, "aria-describedby": `${k}-err` } : {});
   const errEl = (k: string) => (err[k] ? <p className="error-text" id={`${k}-err`}>{err[k]}</p> : null);
 
+  const whenOk = dep !== "" || (preferred !== "" && preferred >= minDate);
+  const STEPS = [
+    { label: "When", done: whenOk },
+    { label: "Extras", done: whenOk, optional: true },
+    { label: "Details", done: detailsOk },
+    { label: "Confirm", done: confirmOk },
+  ];
+
   return (
-    <form action={action} className="booking" noValidate={false}>
+    <form ref={formRef} action={action} className="booking" noValidate={false} onChange={checkProgress} onInput={checkProgress}>
       <input type="hidden" name="trekSlug" value={trek.slug} />
       <input type="hidden" name="displayCurrency" value={selected} />
       <div aria-hidden="true" style={{ position: "absolute", left: "-9999px" }}>
@@ -52,6 +91,20 @@ export function BookingForm({ trek, departures, experiences, countries, initialD
       </div>
 
       <div className="booking__steps">
+        <nav className="booking-progress" aria-label="Booking steps">
+          <ol>
+            {STEPS.map((st, i) => (
+              <li key={st.label} data-done={st.done || undefined} data-current={current === i || undefined}>
+                <button type="button" onClick={() => goStep(i)} aria-current={current === i ? "step" : undefined}>
+                  <span className="booking-progress__dot" aria-hidden="true">{st.done ? "✓" : i + 1}</span>
+                  <span>{st.label}{st.optional && <small> optional</small>}</span>
+                  <span className="vh">{st.done ? ", complete" : ", not complete"}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <span className="booking-progress__bar" aria-hidden="true" style={{ ["--p" as string]: STEPS.filter((x) => x.done).length / STEPS.length }} />
+        </nav>
         {state.message && !state.ok && <p className="notice-box" role="alert" style={{ borderColor: "var(--bad)" }}>{state.message}</p>}
 
         <fieldset className="step">
@@ -155,6 +208,12 @@ export function BookingForm({ trek, departures, experiences, countries, initialD
           <p className="notice-box" style={{ margin: 0 }}>This sends a booking request. It is not yet a confirmed booking and no payment is taken now. We will check availability and contact you to confirm and arrange payment in {base}.</p>
           <button className="btn" type="submit" disabled={pending} style={{ justifySelf: "start" }}>{pending ? "Sending…" : "Send booking request"}</button>
         </fieldset>
+      </div>
+
+      {/* Phones: the total stays in view while the summary sits below the form. */}
+      <div className="booking-bar" aria-hidden="true">
+        <span><small>Total</small><strong>{fmt(total)}</strong></span>
+        <button type="button" className="btn btn--small" tabIndex={-1} onClick={() => goStep(3)}>{confirmOk && detailsOk && whenOk ? "Review and send" : "Continue"}</button>
       </div>
 
       <aside className="summary" aria-label="Booking summary" aria-live="polite">

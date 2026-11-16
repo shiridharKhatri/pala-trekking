@@ -6,6 +6,7 @@ import type { DailyWeather, PointWeather } from "@/lib/weather";
 import { describe, compass } from "@/lib/weather-codes";
 import { addDays, date, feet, km, metres, dateTime } from "@/lib/format";
 import { WeatherIcon } from "./WeatherIcon";
+import { emitDayHover, scrollToDay, useDayHover } from "@/lib/day-sync";
 
 interface Props {
   itinerary: ItineraryDay[];
@@ -30,6 +31,7 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
   const days = useMemo(() => [...itinerary].sort((a, b) => a.day - b.day), [itinerary]);
   const spById = useMemo(() => new Map(stayPoints.map((s) => [s.id, s])), [stayPoints]);
   const listRef = useRef<HTMLOListElement>(null);
+  const tiltRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [progress, setProgress] = useState(0);
   const reduce = useSyncExternalStore(
@@ -38,6 +40,10 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
     () => false,
   );
   const [mode, setMode] = useState<Mode>({ kind: "now" });
+  // Day the visitor is pointing at (chart, list or route map), by day number.
+  const [hoverDay, setHoverDay] = useState<number | null>(null);
+  useDayHover("profile", setHoverDay);
+  const point = (day: number | null) => { setHoverDay(day); emitDayHover(day, "profile"); };
   const forecastDates = useMemo(() => {
     const first = weather && Object.values(weather.points)[0];
     return first ? first.daily.map((d) => d.date) : [];
@@ -73,7 +79,8 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
   }, [days.length]);
 
   // ---- chart geometry ----------------------------------------------------
-  const W = 600, H = 300, padL = 44, padR = 16, padT = 24, padB = 28;
+  const W = 600, H = 300, padL = 44, padR = 30, padT = 34, padB = 34;
+  const DX = 14, DY = -12; // extrusion depth of the 3D ribbon
   const pts = days.map((d, i) => ({ i, d, e: d.elevationM }));
   const known = pts.filter((p) => p.e != null) as { i: number; d: ItineraryDay; e: number }[];
   const maxE = Math.max(1000, ...known.map((p) => p.e));
@@ -97,12 +104,33 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
     ? (after.i === before.i ? before.e : before.e + ((t - before.i) / (after.i - before.i)) * (after.e - before.e))
     : null;
   const walkerX = known.length ? x(Math.min(Math.max(t, known[0].i), known[known.length - 1].i)) : 0;
+  // Acclimatisation: a rise of more than 500 m in sleeping altitude above
+  // 3,000 m, computed from the stored stage elevations.
+  const gain = new Map<number, number>();
+  known.forEach((p, j) => {
+    const prev = known[j - 1];
+    if (prev && p.e >= 3000 && p.e - prev.e > 500) gain.set(p.i, p.e - prev.e);
+  });
   const curWx = cur ? stopIcon(cur, spById, weather, weatherDisabled, mode) : null;
   const o2 = cur?.elevationM != null ? oxygenPct(cur.elevationM) : null;
 
   return (
     <div className="ascent">
       <div className="ascent__chart">
+        {/* 3D profile: an extruded ribbon with slope-shaded faces and pins
+            rising from the ground plane. Pointer movement tilts it. */}
+        <div
+          className="profile3d"
+          ref={tiltRef}
+          onPointerMove={(e) => {
+            const el = tiltRef.current;
+            if (!el || reduce || e.pointerType !== "mouse") return;
+            const r = el.getBoundingClientRect();
+            el.style.setProperty("--ry", (((e.clientX - r.left) / r.width - 0.5) * 14).toFixed(2));
+            el.style.setProperty("--rx", (((e.clientY - r.top) / r.height - 0.5) * -10 + 10).toFixed(2));
+          }}
+          onPointerLeave={() => { tiltRef.current?.style.removeProperty("--ry"); tiltRef.current?.style.removeProperty("--rx"); }}
+        >
         <svg className="profile" viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby="profile-title profile-desc">
           <title id="profile-title">Elevation profile by day</title>
           <desc id="profile-desc">
@@ -110,18 +138,37 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
           </desc>
           <defs>
             <linearGradient id="profile-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="currentColor" stopOpacity="0.14" />
-              <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+              <stop offset="0%" stopColor="currentColor" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="currentColor" stopOpacity="0.02" />
             </linearGradient>
           </defs>
+          {/* Ground plane, receding into depth */}
+          <path className="profile__ground" d={`M${padL},${H - padB} L${W - padR},${H - padB} l${DX},${DY} L${padL + DX},${H - padB + DY} Z`} />
           <g className="profile__grid">
             {ticks.map((t) => (
               <g key={t}>
-                <line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} />
+                <line x1={padL + DX} x2={W - padR + DX} y1={y(t) + DY} y2={y(t) + DY} />
                 <text x={padL - 8} y={y(t) + 4} textAnchor="end">{t === 0 ? "0" : `${t / 1000}k`}</text>
               </g>
             ))}
           </g>
+          {/* Back edge of the ribbon */}
+          <path className="profile__back" d={path} transform={`translate(${DX} ${DY})`} />
+          {/* Ribbon top faces: lighter going up, darker going down; walked ones glow. */}
+          {known.slice(1).map((q, j) => {
+            const p0 = known[j];
+            const up = q.e >= p0.e;
+            const walked = reduce || q.i <= t;
+            return (
+              <path
+                key={`f${q.i}`}
+                className="profile__face"
+                data-up={up || undefined}
+                data-walked={walked || undefined}
+                d={`M${x(p0.i)},${y(p0.e)} L${x(q.i)},${y(q.e)} l${DX},${DY} L${x(p0.i) + DX},${y(p0.e) + DY} Z`}
+              />
+            );
+          })}
           <path className="profile__area" d={area} style={{ color: "var(--sc-ink)" }} />
           <path className="profile__line" d={path} opacity={0.35} />
           <path className="profile__line profile__line--draw" d={path} pathLength={1} strokeDasharray="1" strokeDashoffset={1 - drawn} />
@@ -129,16 +176,37 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
             const passed = reduce || p.i <= active;
             const isActive = p.i === active;
             const isPeak = peak?.i === p.i;
+            const isHover = hoverDay === p.d.day;
             const anchor = x(p.i) > W - 120 ? "end" : x(p.i) < padL + 60 ? "start" : "middle";
             return (
-              <g key={p.i} className="profile__stop" data-passed={passed} data-active={isActive} data-peak={isPeak && !isActive}>
+              <g
+                key={p.i}
+                className="profile__stop"
+                data-passed={passed}
+                data-active={isActive}
+                data-peak={isPeak && !isActive}
+                data-hover={isHover || undefined}
+                onMouseEnter={() => point(p.d.day)}
+                onMouseLeave={() => point(null)}
+                onClick={() => scrollToDay(p.d.day)}
+              >
+                <ellipse className="profile__shadow" cx={x(p.i) + DX / 2} cy={H - padB + DY / 2} rx={5} ry={2} />
+                <line className="profile__stake" x1={x(p.i)} x2={x(p.i)} y1={H - padB} y2={y(p.e)} />
+                <circle className="profile__hit" cx={x(p.i)} cy={y(p.e)} r={14} />
                 <circle cx={x(p.i)} cy={y(p.e)} r={isActive ? 7 : 4.5} />
-                <text x={x(p.i)} y={y(p.e) - 13} textAnchor={anchor}>
-                  {isActive ? `${p.d.destination} ${metres(p.e)}` : `${metres(p.e)}`}
-                </text>
+                {(isActive || isHover || isPeak) && (
+                  <text x={x(p.i)} y={y(p.e) - 13} textAnchor={anchor}>
+                    {isActive || isHover ? `${p.d.destination} ${metres(p.e)}` : metres(p.e)}
+                  </text>
+                )}
               </g>
             );
           })}
+          {[...gain].map(([i, g]) => (
+            <path key={`g${i}`} className="profile__gain" d={`M${x(i)},${H - padB - 12} l5,8 h-10 z`}>
+              <title>{`+${g} m in one night above 3,000 m: plan acclimatisation`}</title>
+            </path>
+          ))}
           {walkerE != null && (
             <g className="profile__walker" style={{ transform: `translate(${walkerX.toFixed(1)}px, ${y(walkerE).toFixed(1)}px)` }} aria-hidden="true">
               <line className="profile__walker-drop" x1={0} x2={0} y1={0} y2={H - padB - y(walkerE)} />
@@ -147,7 +215,6 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
             </g>
           )}
           {curWx && cur?.elevationM != null && (() => {
-            // Weather for tonight's stop pops in above the active stop's label.
             const sx = x(active), sz = 24;
             const ix = sx > W - 120 ? sx - sz : sx < padL + 60 ? sx : sx - sz / 2;
             return (
@@ -157,18 +224,19 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
             );
           })()}
         </svg>
+        </div>
         {cur && (
           <div className="profile-readout" aria-live="polite">
             <span className="profile-readout__day">Day {cur.day}</span>
             <span className="profile-readout__place">{cur.destination}</span>
             <span className="profile-readout__alt">{metres(cur.elevationM)}</span>
             {o2 != null && (
-              <span className="profile-readout__o2" title="Estimate from the standard atmosphere. Real values shift with weather and season.">
+              <span className="profile-readout__o2" title="Oxygen per breath compared with sea level (standard atmosphere estimate)">
                 <span className="o2-meter" aria-hidden="true"><span style={{ transform: `scaleX(${(o2 / 100).toFixed(3)})` }} /></span>
-                <span>Oxygen ≈ <b>{Math.round(o2)}%</b> of sea level</span>
+                <span>O<sub>2</sub> <b>{Math.round(o2)}%</b><span className="vh"> of sea level</span></span>
+                {gain.has(active) && <span className="profile-readout__gain" title="Big rise in sleeping altitude: plan acclimatisation">▲ +{metres(gain.get(active)!)}</span>}
               </span>
             )}
-            <span className="profile-readout__wx">{readoutWeather(cur, spById, weather, weatherDisabled, mode)}</span>
           </div>
         )}
       </div>
@@ -176,18 +244,18 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
       <div>
         <div className="wx-controls">
           <label className="field" style={{ minWidth: "16rem" }}>
-            <span>Weather shown for</span>
+            <span>Weather</span>
             <select
               className="input"
               value={mode.kind === "now" ? "" : mode.start}
               onChange={(e) => setMode(e.target.value ? { kind: "departure", start: e.target.value } : { kind: "now" })}
             >
-              <option value="">Current conditions at each stop</option>
-              {departures.map((d) => <option key={d.id} value={d.startDate}>Departure on {date(d.startDate)}</option>)}
+              <option value="">Now</option>
+              {departures.map((d) => <option key={d.id} value={d.startDate}>Forecast for {date(d.startDate)} departure</option>)}
             </select>
           </label>
           <p className="label" style={{ margin: 0, alignSelf: "end" }}>
-            {loading ? "Loading weather for each stop…" : weather ? <>Updated {dateTime(weather.fetchedAt)}. {attribution}</> : "Live weather is unavailable right now."}
+            {loading ? "Loading weather…" : weather ? <>Updated {dateTime(weather.fetchedAt)} · {attribution}</> : "Live weather unavailable."}
           </p>
         </div>
         <ol className="days" ref={listRef}>
@@ -200,6 +268,9 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
                 id={`day-${d.day}`}
                 data-day-index={i}
                 data-active={i === active}
+                data-hover={hoverDay === d.day || undefined}
+                onMouseEnter={() => point(d.day)}
+                onMouseLeave={() => point(null)}
                 data-alt={d.elevationM ?? undefined}
                 data-alt-label={d.destination}
               >
@@ -208,9 +279,10 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
                   <h3>{d.start === d.destination ? d.destination : `${d.start} to ${d.destination}`}</h3>
                   <p>{d.activities}</p>
                   <ul className="day__meta">
-                    {d.walkingHours && <li>Walking <b>{d.walkingHours}</b></li>}
-                    {d.distanceKm != null && <li>Distance <b>{km(d.distanceKm, true)}</b></li>}
-                    {d.elevationM != null && <li>Sleep at <b>{metres(d.elevationM)}</b> ({feet(d.elevationM)})</li>}
+                    {d.walkingHours && <li title="Walking time"><b>{d.walkingHours}</b> walk</li>}
+                    {d.distanceKm != null && <li title={km(d.distanceKm, true)}><b>{km(d.distanceKm)}</b></li>}
+                    {d.elevationM != null && <li title={feet(d.elevationM)}>sleep <b>{metres(d.elevationM)}</b></li>}
+                    {gain.has(i) && <li className="day__gain" title="Big rise in sleeping altitude: plan acclimatisation">▲ <b>+{metres(gain.get(i)!)}</b></li>}
                   </ul>
                   {sp && (
                     <StopWeather
@@ -233,24 +305,6 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
   );
 }
 
-function readoutWeather(day: ItineraryDay, spById: Map<string, StayPoint>, weather: Props["weather"], disabled: string[], mode: Mode): string {
-  const sp = day.stayPointId ? spById.get(day.stayPointId) : undefined;
-  if (!sp) return "No overnight stop on this day.";
-  if (disabled.includes(sp.id) || !sp.weatherEnabled) return `${sp.name}: weather not shown for this stop.`;
-  const pw = weather?.points[sp.id];
-  if (!pw) return `${sp.name}: live weather unavailable.`;
-  if (mode.kind === "now" && pw.current) {
-    const c = pw.current;
-    return `${sp.name} now: ${describe(c.code).label}, ${Math.round(c.temp ?? 0)}°C, wind ${Math.round(c.wind ?? 0)} km/h`;
-  }
-  if (mode.kind === "departure") {
-    const target = addDays(mode.start, day.day - 1);
-    const f = pw.daily.find((x) => x.date === target);
-    if (f) return `${sp.name}, forecast ${date(target)}: ${describe(f.code).label}, ${fmt(f.tMin)} to ${fmt(f.tMax)}°C`;
-    return `${sp.name}: forecast for ${date(target)} not yet available.`;
-  }
-  return sp.name;
-}
 
 /** Share of sea-level oxygen per breath: air pressure ratio from the ICAO standard atmosphere. */
 function oxygenPct(m: number): number {
@@ -274,53 +328,51 @@ const fmt = (n: number | null) => (n == null ? "?" : Math.round(n));
 function StopWeather({ sp, dayOffset, weather, disabled, mode, forecastDates, loading }: {
   sp: StayPoint; dayOffset: number; weather: PointWeather | null; disabled: boolean; mode: Mode; forecastDates: string[]; loading: boolean;
 }) {
-  const head = <span className="wx__kind">{sp.name} · {metres(sp.elevationM)}</span>;
   if (loading && !disabled) return (
     <div className="wx wx--loading" aria-busy="true">
       <span className="skel" style={{ width: 34, height: 34, borderRadius: "50%" }} />
       <div className="wx__lines">
         <span className="skel" style={{ width: "9rem", height: 18 }} />
-        <span className="skel" style={{ width: "min(16rem, 90%)", height: 10 }} />
         <span className="vh">Loading weather for {sp.name}</span>
       </div>
     </div>
   );
-  if (disabled) {
-    return (
-      <div className="wx wx--fallback">
-        {head}
-        <p>Live weather is switched off for this stop. {sp.seasonalGuidance}</p>
-      </div>
-    );
-  }
-  if (!weather) {
-    return (
-      <div className="wx wx--fallback">
-        {head}
-        <p>Weather data is unavailable at the moment. {sp.seasonalGuidance && <>Seasonal guidance: {sp.seasonalGuidance}</>}</p>
-      </div>
-    );
-  }
+  // Fallbacks (PRD 7, FR 08): say plainly why there is no data, then the guidance.
+  const fallback = (why: string) => (
+    <div className="wx wx--fallback">
+      <p><b>{why}</b>{sp.seasonalGuidance && <> {sp.seasonalGuidance}</>}</p>
+    </div>
+  );
+  if (disabled) return fallback("Live weather off for this stop.");
+  if (!weather) return fallback("Weather unavailable.");
+
+  const more = (items: (string | null | false)[]) => {
+    const list = items.filter(Boolean) as string[];
+    return list.length ? (
+      <details className="wx__more">
+        <summary>More</summary>
+        <p>{list.join(" · ")}</p>
+      </details>
+    ) : null;
+  };
+
   if (mode.kind === "now") {
     const c = weather.current;
-    if (!c) return <div className="wx wx--fallback">{head}<p>No current conditions reported.</p></div>;
+    if (!c) return fallback("No current reading.");
     const d = describe(c.code);
+    const sun = weather.daily[0]?.sunrise ? `Sun ${weather.daily[0].sunrise.slice(11)}–${weather.daily[0].sunset?.slice(11) ?? ""}` : null;
     return (
       <div className="wx">
+        <div className="wx__row">
         <WeatherIcon kind={d.icon} label={d.label} />
         <div className="wx__main">
-          <strong>{fmt(c.temp)}°C</strong>
+          <strong>{fmt(c.temp)}°</strong>
           <span>{d.label}</span>
-          <span className="wx__kind">Current, not a forecast for your dates</span>
+          {c.wind != null && <span className="wx__sub">wind {fmt(c.wind)} km/h</span>}
+          <span className="wx__kind" title="Conditions right now, not a forecast for your travel dates">Now, not a forecast</span>
         </div>
-        <div className="wx__detail">
-          {head}
-          {c.feels != null && <span>Feels like {fmt(c.feels)}°C</span>}
-          {c.wind != null && <span>Wind {fmt(c.wind)} km/h {compass(c.windDir)}</span>}
-          {c.gust != null && <span>Gusts {fmt(c.gust)} km/h</span>}
-          {c.humidity != null && <span>Humidity {fmt(c.humidity)}%</span>}
-          {weather.daily[0]?.sunrise && <span>Sunrise {weather.daily[0].sunrise.slice(11)} · Sunset {weather.daily[0].sunset?.slice(11)}</span>}
         </div>
+        {more([c.feels != null && `Feels ${fmt(c.feels)}°`, c.gust != null && `Gusts ${fmt(c.gust)} km/h ${compass(c.windDir)}`, c.humidity != null && `Humidity ${fmt(c.humidity)}%`, sun])}
       </div>
     );
   }
@@ -329,34 +381,21 @@ function StopWeather({ sp, dayOffset, weather, disabled, mode, forecastDates, lo
   if (!f) {
     const last = forecastDates[forecastDates.length - 1];
     const availableFrom = last ? addDays(target, -(forecastDates.length - 1)) : null;
-    return (
-      <div className="wx wx--fallback">
-        {head}
-        <p>
-          A forecast for {date(target)} is not available yet{availableFrom && target > last ? <>; it should appear from about {date(availableFrom)}</> : ""}.
-          {sp.seasonalGuidance && <> Seasonal guidance: {sp.seasonalGuidance}</>}
-        </p>
-      </div>
-    );
+    return fallback(`No forecast for ${date(target)} yet${availableFrom && target > last ? `; expected from ${date(availableFrom)}` : ""}.`);
   }
   const d = describe(f.code);
   return (
     <div className="wx">
+      <div className="wx__row">
       <WeatherIcon kind={d.icon} label={d.label} />
       <div className="wx__main">
-        <strong>{fmt(f.tMin)} to {fmt(f.tMax)}°C</strong>
+        <strong>{fmt(f.tMin)}° / {fmt(f.tMax)}°</strong>
         <span>{d.label}</span>
-        <span className="wx__kind">Forecast for {date(target)}</span>
+        {f.precipProb != null && <span className="wx__sub">{fmt(f.precipProb)}% precip.</span>}
+        <span className="wx__kind">Forecast {date(target, { year: undefined })}</span>
       </div>
-      <div className="wx__detail">
-        {head}
-        {f.feelsMin != null && <span>Feels like {fmt(f.feelsMin)}°C at coldest</span>}
-        {f.precipProb != null && <span>Precipitation {fmt(f.precipProb)}%</span>}
-        {f.snowfallCm != null && f.snowfallCm > 0 && <span>Snow {f.snowfallCm} cm</span>}
-        {f.windMax != null && <span>Wind up to {fmt(f.windMax)} km/h {compass(f.windDir)}</span>}
-        {f.gustMax != null && <span>Gusts {fmt(f.gustMax)} km/h</span>}
-        {f.sunrise && <span>Sunrise {f.sunrise.slice(11)} · Sunset {f.sunset?.slice(11)}</span>}
       </div>
+      {more([f.feelsMin != null && `Feels ${fmt(f.feelsMin)}° at coldest`, f.snowfallCm != null && f.snowfallCm > 0 && `Snow ${f.snowfallCm} cm`, f.windMax != null && `Wind to ${fmt(f.windMax)} km/h ${compass(f.windDir)}`, f.gustMax != null && `Gusts ${fmt(f.gustMax)} km/h`, f.sunrise && `Sun ${f.sunrise.slice(11)}–${f.sunset?.slice(11) ?? ""}`])}
     </div>
   );
 }

@@ -2,8 +2,9 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
 
-// Content Security Policy. Everything (fonts, images, scripts) is same-origin;
-// weather is fetched server-side, so the browser never talks to a third party.
+// Content Security Policy. Fonts, images and scripts are same-origin; weather
+// is fetched server-side. The only third parties the browser talks to are the
+// trek map's tile hosts (connect-src), loaded when a visitor reaches the map.
 // 'unsafe-inline' scripts are required by Next.js's inline bootstrap without a
 // per-request nonce (a nonce would force every page to render dynamically and
 // lose prerendering); the remaining directives still block framing, plugin
@@ -14,7 +15,9 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
+  // Trek map: OpenFreeMap vector tiles + glyphs, AWS Open Data terrain tiles.
+  `connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com${isDev ? " ws: wss:" : ""}`,
+  "worker-src 'self' blob:",
   "media-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",

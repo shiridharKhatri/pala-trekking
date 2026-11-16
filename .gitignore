@@ -52,3 +52,6 @@ next-env.d.ts
 # local tooling caches
 .impeccable/
 .claude/
+
+# copied from node_modules by scripts/copy-maplibre-worker.mjs
+/public/vendor/maplibre/

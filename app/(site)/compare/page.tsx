@@ -7,6 +7,7 @@ import { Price } from "@/components/CurrencyProvider";
 import { CompareSync } from "@/components/CompareSync";
 import { difficultyLabel, feet, gatewayLabel, metres } from "@/lib/format";
 import { CompareSkeleton } from "@/components/Skeletons";
+import { ProfileOverlay } from "@/components/ProfileOverlay";
 
 export const metadata: Metadata = {
   title: "Compare treks",
@@ -79,6 +80,18 @@ async function Comparison({ searchParams }: { searchParams: Promise<SP> }) {
         <p className="empty">Select at least two treks to see them side by side.{raw.split(",").filter(Boolean).length > 3 && " Only the first three are compared."}</p>
       ) : (
         <>
+        <section aria-labelledby="overlay-title" style={{ display: "grid", gap: "var(--sc-4)", minWidth: 0 }}>
+          <h2 id="overlay-title" className="display display--sm" style={{ margin: 0 }}>Where you sleep, night by night</h2>
+          <ProfileOverlay
+            series={selected.map((t) => ({
+              slug: t.slug,
+              name: t.name,
+              points: [...t.itinerary].sort((a, b) => a.day - b.day)
+                .filter((d) => d.elevationM != null)
+                .map((d) => ({ day: d.day, elevationM: d.elevationM as number, place: d.destination })),
+            }))}
+          />
+        </section>
         <p className="compare-hint" aria-hidden="true">Swipe sideways to see all {selected.length} treks →</p>
         <div className="scroll-x" tabIndex={0} aria-label="Comparison table, scrolls sideways on small screens">
           <table className="compare-table" data-cols={selected.length}>

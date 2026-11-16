@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Vendored Scroll Craft engine: kept byte-for-byte as published.
     "vendor/**",
     ".mongo-data/**",
+    // MapLibre worker copied from node_modules at dev/build time.
+    "public/vendor/**",
   ]),
 ]);
 

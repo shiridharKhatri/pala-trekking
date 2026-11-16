@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CurrencySelect } from "./CurrencyProvider";
+import { SavedLink } from "./Saved";
 
 const NAV = [
   { href: "/treks", label: "Treks" },
@@ -64,6 +65,7 @@ function HeaderInner({ pathname }: { pathname: string }) {
         ))}
       </nav>
       <div className="header-tools">
+        <SavedLink />
         <CurrencySelect />
         <Link href="/treks" className="btn btn--small">Find a trek</Link>
       </div>

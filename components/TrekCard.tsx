@@ -5,6 +5,7 @@ import type { TrekCard as T } from "@/lib/types";
 import { difficultyLabel, gatewayLabel, metres } from "@/lib/format";
 import { Price } from "./CurrencyProvider";
 import { CompareToggle } from "./Compare";
+import { SaveToggle } from "./Saved";
 
 export function TrekCard({ trek, regionName, priority = false, style, marker = false }: { trek: T; regionName?: string; priority?: boolean; style?: React.CSSProperties; marker?: boolean }) {
   return (
@@ -19,6 +20,7 @@ export function TrekCard({ trek, regionName, priority = false, style, marker = f
           </ViewTransition>
         )}
         <span className="chip trek-card__badge">From {gatewayLabel[trek.gateway]}</span>
+        <SaveToggle slug={trek.slug} name={trek.name} />
       </div>
       <div className="trek-card__body">
         <h3 className="trek-card__title"><Link href={`/treks/${trek.slug}`}>{trek.name}</Link></h3>
