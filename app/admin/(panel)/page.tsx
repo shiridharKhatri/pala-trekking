@@ -34,12 +34,14 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
   const database = await db();
   const [recent, activity] = await Promise.all([
     database.collection(COLL.bookings).find({}, { projection: { lead: 0, travellerNames: 0, message: 0 } }).sort({ createdAt: -1 }).limit(7).toArray(),
-    database.collection(COLL.audit).find({}).sort({ at: -1 }).limit(9).toArray(),
+    database.collection(COLL.audit).find({}).sort({ at: -1 }).limit(7).toArray(),
   ]);
   const recentRows = plain<Booking[]>(recent);
   const cur = a.base;
   const per = `vs previous ${range} days`;
   const spark = (pts: { value: number }[]) => pts.map((p) => p.value);
+  const DEP_ROWS = 8;
+  const deps = a.departures.slice(0, DEP_ROWS);
 
   const lowSeats = a.departures.filter((d) => d.status !== "closed" && d.spacesLeft <= 2).length;
   const forming = a.departures.filter((d) => d.status === "forming" && new Date(d.startDate).getTime() - new Date().getTime() < 30 * 86400000).length;
@@ -103,14 +105,27 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
             table={{ head: ["Trek", "Requests", "Travellers", `Value (${cur})`], rows: a.byTrek.map((t) => [t.name, t.bookings, t.travellers, num(t.value)]) }}>
             <HBars items={a.byTrek.slice(0, 6).map((t) => ({ label: t.name, value: t.value, sub: `${t.bookings} requests, ${t.travellers} travellers` }))} format={(n) => money(n, cur, true)} sub />
           </ChartCard>
+          <ChartCard title="Revenue by gateway" sub={`${cur}, pipeline value`}>
+            <SegBar parts={[{ label: "Kathmandu", value: a.gateways.kathmandu ?? 0, color: C.blue }, { label: "Pokhara", value: a.gateways.pokhara ?? 0, color: C.orange }]} format={(n) => money(n, cur, true)} />
+            <dl className="a-gwstats">
+              {a.gatewayRows.map((g) => (
+                <div key={g.key}>
+                  <dt><Key color={g.key === "kathmandu" ? C.blue : C.orange}>{g.key === "kathmandu" ? "Kathmandu" : "Pokhara"}</Key></dt>
+                  <dd><b>{num(g.requests)}</b> requests</dd>
+                  <dd><b>{num(g.travellers)}</b> travellers</dd>
+                  <dd><b>{num(g.treks)}</b> {g.treks === 1 ? "trek" : "treks"} booked</dd>
+                </div>
+              ))}
+            </dl>
+          </ChartCard>
         </div>
         <div className="a-span-7">
-          <ChartCard title="Upcoming departure capacity" sub="Public departures, next 10"
+          <ChartCard title="Upcoming departure capacity" sub={`Public departures, next ${DEP_ROWS}`}
             legend={<><Key color={C.blue}>Website</Key><Key color={C.orange}>Offline</Key></>}
-            table={{ head: ["Trek", "Start", "Website", "Offline", "Capacity", "Status"], rows: a.departures.map((d) => [d.trek, date(d.startDate), d.web, d.offline, d.capacity, departureStatusLabel[d.status]]) }}>
-            {a.departures.length ? (
+            table={{ head: ["Trek", "Start", "Website", "Offline", "Capacity", "Status"], rows: deps.map((d) => [d.trek, date(d.startDate), d.web, d.offline, d.capacity, departureStatusLabel[d.status]]) }}>
+            {deps.length ? (
               <div>
-                {a.departures.map((d) => (
+                {deps.map((d) => (
                   <div key={d.id} className="a-dep">
                     <span className="a-dep__trek"><Link href={`/admin/departures/${d.id}`}>{d.trek}</Link></span>
                     <span className="a-mono">{date(d.startDate, { year: undefined })}</span>
@@ -119,43 +134,44 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
                     <span className={`a-status a-status--dep-${d.status}`}>{departureStatusLabel[d.status]}</span>
                   </div>
                 ))}
+                <p className="a-hint" style={{ margin: "0.6rem 0 0" }}><Link href="/admin/departures">All departures</Link></p>
               </div>
             ) : <p className="a-hint">No upcoming public departures. <Link href="/admin/departures/new">Create one</Link>.</p>}
           </ChartCard>
         </div>
 
         <div className="a-span-4">
-          <ChartCard title="Revenue by gateway" sub={`${cur}, pipeline value`}>
-            <SegBar parts={[{ label: "Kathmandu", value: a.gateways.kathmandu ?? 0, color: C.blue }, { label: "Pokhara", value: a.gateways.pokhara ?? 0, color: C.orange }]} format={(n) => money(n, cur, true)} />
-          </ChartCard>
-          <div style={{ height: "1rem" }} />
           <ChartCard title="Where travellers come from" sub="Lead traveller's country" table={{ head: ["Country", "Requests"], rows: a.countries.map((c) => [c.label, c.value]) }}>
-            <HBars items={a.countries.slice(0, 6)} color={C.aqua} />
+            <HBars items={a.countries} color={C.aqua} />
           </ChartCard>
         </div>
         <div className="a-span-4">
           <section className="a-card a-chart">
             <header className="a-chart__head"><div><h2>Needs attention</h2><p className="a-hint">Work waiting for the team</p></div></header>
-            <ul className="a-queue">
-              {queue.map((q) => (
-                <li key={q.text}><span className="a-queue__n" data-zero={q.n === 0}>{q.n}</span><Link href={q.href}>{q.text}</Link><span aria-hidden="true">→</span></li>
-              ))}
-            </ul>
-            {a.oldestOpenDays != null && a.oldestOpenDays > 2 && <p className="a-hint">The oldest unreviewed request is {a.oldestOpenDays} days old.</p>}
+            <div className="a-chart__body">
+              <ul className="a-queue">
+                {queue.map((q) => (
+                  <li key={q.text}><span className="a-queue__n" data-zero={q.n === 0}>{q.n}</span><Link href={q.href}>{q.text}</Link><span aria-hidden="true">→</span></li>
+                ))}
+              </ul>
+            </div>
+            {a.oldestOpenDays != null && a.oldestOpenDays > 2 && <p className="a-hint" style={{ margin: 0 }}>The oldest unreviewed request is {a.oldestOpenDays} days old.</p>}
           </section>
         </div>
         <div className="a-span-4">
           <section className="a-card a-chart">
             <header className="a-chart__head"><div><h2>Recent activity</h2><p className="a-hint">Admin actions</p></div><Link href="/admin/activity" className="a-hint">All activity</Link></header>
-            <ul className="a-feed">
-              {activity.map((e) => (
-                <li key={e._id.toHexString()}>
-                  <time dateTime={new Date(e.at).toISOString()}>{new Date(e.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kathmandu" })}</time>
-                  <span><b>{String(e.action)}</b> <span className="a-hint">{String(e.email ?? "")}</span></span>
-                </li>
-              ))}
-              {!activity.length && <li><span /><span className="a-hint">No activity yet.</span></li>}
-            </ul>
+            <div className="a-chart__body">
+              <ul className="a-feed">
+                {activity.map((e) => (
+                  <li key={e._id.toHexString()}>
+                    <time dateTime={new Date(e.at).toISOString()}>{new Date(e.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kathmandu" })}</time>
+                    <span><b>{String(e.action)}</b> <span className="a-hint">{String(e.email ?? "")}</span></span>
+                  </li>
+                ))}
+                {!activity.length && <li><span /><span className="a-hint">No activity yet.</span></li>}
+              </ul>
+            </div>
           </section>
         </div>
 

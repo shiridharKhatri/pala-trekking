@@ -43,7 +43,7 @@ export function ChartCard({ title, sub, legend, children, table, className = "",
         <div><h2>{title}</h2>{sub && <p className="a-hint">{sub}</p>}</div>
         {legend && <div className="a-legend">{legend}</div>}
       </header>
-      {children}
+      <div className="a-chart__body">{children}</div>
       {table && (
         <details className="a-chart__table">
           <summary>View as table</summary>

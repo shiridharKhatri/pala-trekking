@@ -82,8 +82,8 @@ for (let n = 0; n < N; n++) {
   const subtotal = trek.basePrice * travellers;
   const total = subtotal + addOnTotal;
   const ageStatus = ageDays > 40
-    ? weighted([["confirmed", 70], ["cancelled", 12], ["declined", 8], ["reviewing", 4], ["requested", 6]])
-    : ageDays > 12 ? weighted([["confirmed", 38], ["reviewing", 28], ["requested", 18], ["cancelled", 6], ["declined", 10]])
+    ? weighted([["confirmed", 78], ["cancelled", 12], ["declined", 10]])
+    : ageDays > 12 ? weighted([["confirmed", 46], ["reviewing", 32], ["cancelled", 8], ["declined", 14]])
     : weighted([["requested", 55], ["reviewing", 30], ["confirmed", 10], ["declined", 5]]);
   const past = pastDeps.filter((d) => d.trekId === trek._id.toHexString() && new Date(d.startDate).getTime() > created.getTime());
   const attach = past.length && rnd() < 0.7 ? pick(past) : null;

@@ -57,53 +57,57 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/admin/
           </ChartCard>
         </div>
 
-        <div className="a-span-4">
+        <div className="a-span-6">
           <ChartCard title="Group size" sub="Travellers per request" table={{ head: ["Travellers", "Requests"], rows: a.groupSize.map((g) => [g.label, g.value]) }}>
             <Columns data={a.groupSize} color={C.blue} label="Requests by group size" />
           </ChartCard>
         </div>
-        <div className="a-span-4">
+        <div className="a-span-6">
           <ChartCard title="Booking channel" sub="Website requests and bookings recorded by the team">
             <SegBar parts={[{ label: "Website", value: a.source.website, color: C.blue }, { label: "Offline", value: a.source.offline, color: C.orange }]} />
-            <p className="a-hint">{sourceTotal ? `${Math.round((a.source.website / sourceTotal) * 100)}% of bookings arrive through the website.` : "No bookings in this period."}</p>
+            <p className="a-hint" style={{ margin: 0 }}>{sourceTotal ? `${Math.round((a.source.website / sourceTotal) * 100)}% of bookings arrive through the website.` : "No bookings in this period."}</p>
           </ChartCard>
-          <div style={{ height: "1rem" }} />
           <ChartCard title="Value by gateway" sub={cur}>
             <SegBar parts={[{ label: "Kathmandu", value: a.gateways.kathmandu ?? 0, color: C.blue }, { label: "Pokhara", value: a.gateways.pokhara ?? 0, color: C.orange }]} format={(n) => money(n, cur, true)} />
           </ChartCard>
         </div>
-        <div className="a-span-4">
-          <ChartCard title="Optional experiences" sub="Times each extra was added" legend={<Key color={C.aqua}>Added to a booking</Key>}
-            table={{ head: ["Experience", "Times added", `Added value (${cur})`], rows: a.addOns.map((e) => [e.label, e.value, num(e.sub)]) }}>
-            <HBars items={a.addOns.map((e) => ({ label: e.label, value: e.value, sub: `${money(e.sub, cur)} total` }))} color={C.aqua} sub />
-            {!a.addOns.length && <p className="a-hint">No experiences were added in this period.</p>}
-          </ChartCard>
-        </div>
 
-        <div className="a-span-7">
+        <div className="a-span-12">
           <section className="a-card">
             <h2 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>Trek performance</h2>
             <div className="a-scroll">
               <table className="a-table">
-                <thead><tr><th>Trek</th><th className="a-num">Requests</th><th className="a-num">Travellers</th><th className="a-num">Pipeline ({cur})</th><th className="a-num">Confirmed</th></tr></thead>
+                <thead><tr><th>Trek</th><th className="a-num">Requests</th><th className="a-num">Travellers</th><th className="a-num">Pipeline ({cur})</th><th className="a-num">Avg per request</th><th className="a-num">Confirmed</th></tr></thead>
                 <tbody>
                   {a.byTrek.map((t) => (
                     <tr key={t.id}>
-                      <th scope="row" style={{ textAlign: "left", fontWeight: 600 }}>{t.name}</th>
+                      <td style={{ fontWeight: 600 }}>{t.name}</td>
                       <td className="a-num">{t.bookings}</td><td className="a-num">{t.travellers}</td><td className="a-num">{num(t.value)}</td>
+                      <td className="a-num">{t.bookings ? num(t.value / t.bookings) : "–"}</td>
                       <td className="a-num">{t.decided ? `${Math.round((t.confirmed / t.decided) * 100)}%` : "–"}</td>
                     </tr>
                   ))}
-                  {!a.byTrek.length && <tr><td colSpan={5}>No requests in this period.</td></tr>}
+                  {!a.byTrek.length && <tr><td colSpan={6}>No requests in this period.</td></tr>}
                 </tbody>
               </table>
             </div>
-            <p className="a-hint" style={{ marginTop: "0.6rem" }}>Confirmed = share of decided requests (confirmed, declined or cancelled) that were confirmed.</p>
+            <p className="a-hint" style={{ margin: "0.6rem 0 0" }}>Confirmed = share of decided requests (confirmed, declined or cancelled) that were confirmed.</p>
           </section>
         </div>
-        <div className="a-span-5">
+
+        <div className="a-span-7">
           <ChartCard title="Countries" sub="Lead traveller's country of residence" table={{ head: ["Country", "Requests"], rows: a.countries.map((c) => [c.label, c.value]) }}>
             <HBars items={a.countries} color={C.blue} />
+          </ChartCard>
+        </div>
+        <div className="a-span-5">
+          <ChartCard title="Optional experiences" sub="Extras added to bookings in this period" legend={<Key color={C.aqua}>Times added</Key>}
+            table={{ head: ["Experience", "Times added", `Added value (${cur})`], rows: a.addOns.map((e) => [e.label, e.value, num(e.sub)]) }}>
+            <div className="a-headfig">
+              <div><b>{Math.round(a.kpis.addOnRate.value)}%</b><span>of bookings added an extra</span></div>
+              <div><b>{money(a.addOns.reduce((s, e) => s + e.sub, 0), cur, true)}</b><span>added value</span></div>
+            </div>
+            <HBars items={a.addOns.map((e) => ({ label: e.label, value: e.value, sub: `${money(e.sub, cur)} total` }))} color={C.aqua} sub />
           </ChartCard>
         </div>
       </div>

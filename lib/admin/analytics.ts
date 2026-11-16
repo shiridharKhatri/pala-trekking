@@ -108,7 +108,17 @@ export async function getAnalytics(range: Range) {
   const byTrek = [...byTrekMap.entries()].map(([id, v]) => ({ id, ...v })).sort((a, b) => b.value - a.value);
 
   const gw = { kathmandu: 0, pokhara: 0 } as Record<string, number>;
-  for (const b of live(cur)) { const g = trekMeta.get(b.trekId)?.gateway; if (g) gw[g] = (gw[g] ?? 0) + b.total; }
+  const gatewayStats: Record<string, { requests: number; travellers: number; treks: Set<string> }> = {
+    kathmandu: { requests: 0, travellers: 0, treks: new Set() }, pokhara: { requests: 0, travellers: 0, treks: new Set() },
+  };
+  for (const b of live(cur)) {
+    const g = trekMeta.get(b.trekId)?.gateway;
+    if (!g) continue;
+    gw[g] = (gw[g] ?? 0) + b.total;
+    const st = (gatewayStats[g] ??= { requests: 0, travellers: 0, treks: new Set() });
+    st.requests++; st.travellers += b.travellers; st.treks.add(b.trekId);
+  }
+  const gatewayRows = Object.entries(gatewayStats).map(([key, v]) => ({ key, requests: v.requests, travellers: v.travellers, treks: v.treks.size, value: gw[key] ?? 0 }));
 
   const cm = new Map<string, number>();
   for (const b of live(cur)) cm.set(b.lead?.country || "??", (cm.get(b.lead?.country || "??") ?? 0) + 1);
@@ -155,7 +165,7 @@ export async function getAnalytics(range: Range) {
   const oldestOpen = await database.collection(C.bookings).find({ status: "requested" }, { projection: { createdAt: 1 } }).sort({ createdAt: 1 }).limit(1).toArray();
 
   return {
-    base, range, kpis, requestsSeries, valueSeries, inquirySeries, confirmedSeries, status, byTrek, gateways: gw, countries, groupSize, leadTime, addOns,
+    base, range, kpis, requestsSeries, valueSeries, inquirySeries, confirmedSeries, status, byTrek, gateways: gw, gatewayRows, countries, groupSize, leadTime, addOns,
     source, funnel, departures, openRequests, oldestOpenDays: oldestOpen[0] ? Math.floor((nowMs - new Date(oldestOpen[0].createdAt as Date).getTime()) / DAY) : null,
     hasDemo: all.some((b) => b.demo),
   };
