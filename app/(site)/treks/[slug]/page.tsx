@@ -91,7 +91,6 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
           </div>
         )}
         <div className="trek-hero__scrim" />
-        {trek.heroImage?.credit && <p className="trek-hero__credit">Photo: {trek.heroImage.credit}</p>}
         <div className="trek-hero__copy">
           <ol className="crumbs">
             <li><Link href="/treks">Treks</Link></li>
@@ -270,7 +269,6 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
             {trek.gallery.map((g, i) => (
               <figure key={g.src + i} data-sc-reveal={i === 0 ? "up" : undefined} data-sc-reveal-at="0.05 0.4">
                 <Image src={g.src} alt={g.alt} width={1600} height={1200} sizes={i === 0 ? "(max-width: 760px) 92vw, 60vw" : "(max-width: 760px) 92vw, 30vw"} quality={72} />
-                <figcaption>{g.caption}{g.credit ? `. Photo: ${g.credit}` : ""}</figcaption>
               </figure>
             ))}
           </div>

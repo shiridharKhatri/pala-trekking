@@ -42,7 +42,6 @@ async function Detail({ params }: { params: Promise<{ slug: string }> }) {
             {e.image && (
               <figure style={{ margin: 0 }}>
                 <Image src={e.image.src} alt={e.image.alt} width={1600} height={1067} sizes="(max-width: 1000px) 92vw, 60vw" quality={75} priority style={{ borderRadius: "var(--sc-r-lg)", width: "100%", height: "auto" }} />
-                {e.image.credit && <figcaption className="label" style={{ marginTop: "0.5rem" }}>Photo: {e.image.credit}</figcaption>}
               </figure>
             )}
             <RichText text={e.description} />

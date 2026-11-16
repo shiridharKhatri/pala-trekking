@@ -53,7 +53,6 @@ export default async function Home() {
             </div>
           </div>
           <p className="hero__second" data-sc-cue="0.55 1 0.2 0.1">{home.heroSecondLine}</p>
-          <p className="hero__credit">Ama Dablam. Photo: Vyacheslav Argenberg, CC BY 4.0</p>
         </div>
       </section>
 
@@ -176,7 +175,6 @@ export default async function Home() {
             <Link className="btn" href="/treks">Find a trek</Link>
             {closeTrek && <Link className="btn btn--ghost" style={{ color: "#f4f5f0", borderColor: "rgba(255,255,255,0.4)" }} href="/compare">Compare treks</Link>}
           </div>
-          <p className="label" style={{ color: "rgba(240,242,236,0.7)" }}>Machhapuchhre. Photo: Charles J. Sharp, CC BY-SA 4.0</p>
         </div>
       </section>
     </ScrollStage>

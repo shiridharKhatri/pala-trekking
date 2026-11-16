@@ -45,7 +45,6 @@ export async function NotFoundView({ standalone = false }: { standalone?: boolea
             <Link className="btn btn--ghost" href="/">Home</Link>
           </div>
         </div>
-        <p className="nf__credit">Photo: Vyacheslav Argenberg, CC BY 4.0</p>
       </section>
       {treks.length > 0 && (
         <section className="wrap nf__treks" aria-labelledby="nf-treks">

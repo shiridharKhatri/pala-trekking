@@ -35,7 +35,6 @@ async function Gateway({ params }: { params: Promise<{ slug: string }> }) {
       <section className="trek-hero" data-rail-hide style={{ height: "72svh" }} aria-labelledby="gw-title" data-alt={g.elevationM ?? undefined} data-alt-label={g.name}>
         {g.image && <div className="trek-hero__img" data-sc-parallax="1.2"><Image src={g.image.src} alt={g.image.alt} fill priority sizes="100vw" quality={78} style={{ objectFit: "cover" }} /></div>}
         <div className="trek-hero__scrim" />
-        {g.image?.credit && <p className="trek-hero__credit">Photo: {g.image.credit}</p>}
         <div className="trek-hero__copy">
           <ol className="crumbs"><li><Link href="/">Home</Link></li><li><Link href="/treks">Treks</Link></li><li>{g.name}</li></ol>
           <h1 id="gw-title" className="display display--xl">Treks from {g.name}</h1>
