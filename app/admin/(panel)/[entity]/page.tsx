@@ -8,7 +8,7 @@ import { money } from "@/lib/format";
 export default async function EntityList({ params, searchParams }: PageProps<"/admin/[entity]">) {
   const { entity } = await params;
   const sp = await searchParams;
-  const def = ENTITIES[entity];
+  const def = Object.hasOwn(ENTITIES, entity) ? ENTITIES[entity] : undefined;
   if (!def || def.collection === "settings") notFound();
   const user = await requireAdmin(def.roles);
   const [rows, opts] = await Promise.all([listEntity(def), loadOptions([{ name: "x", label: "", type: "select", optionSource: "treks" }])]);

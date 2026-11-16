@@ -9,8 +9,17 @@ import { z } from "zod";
 import { db, C } from "../db";
 import { oid } from "../serialize";
 import {
-  audit, createSession, destroySession, hashPassword, loginBlocked, recordFailedLogin, requireAdmin, verifyPassword,
+  audit, createSession, destroySession, hashPassword, loginBlocked, recordFailedLogin, requireAdmin, verifyAgainstDummy, verifyPassword,
 } from "../auth";
+import { clientIp } from "../net";
+
+// Ids arrive from the client (bound action arguments are not encrypted), so
+// every one is validated before it reaches a query.
+function idOrThrow(id: unknown) {
+  const o = typeof id === "string" ? oid(id) : null;
+  if (!o) throw new Error("Invalid id");
+  return o;
+}
 import { CURRENCY_CODES, ENTITIES, type EntityDef, type Field } from "../admin/entities";
 import { getEntity, loadOptions } from "../admin/data";
 import { BOOKING_STATUSES, type AdminUser, type Role } from "../types";
@@ -21,17 +30,22 @@ export type AdminState = { ok: boolean; message?: string; errors?: Record<string
 
 // ------------------------------------------------------------- session ----
 export async function login(_: AdminState, fd: FormData): Promise<AdminState> {
-  const email = String(fd.get("email") ?? "").trim().toLowerCase();
-  const password = String(fd.get("password") ?? "");
+  const email = String(fd.get("email") ?? "").trim().toLowerCase().slice(0, 200);
+  const password = String(fd.get("password") ?? "").slice(0, 1024);
   if (!email || !password) return { ok: false, message: "Enter your email and password." };
   if (await loginBlocked(email)) return { ok: false, message: "Too many failed attempts. Try again in 15 minutes." };
-  const u = await (await db()).collection(C.users).findOne({ email, active: true });
-  if (!u || !(await verifyPassword(password, u.passwordHash))) {
+  const database = await db();
+  const u = await database.collection(C.users).findOne({ email, active: true });
+  // Unknown accounts still pay for a full hash check (no timing enumeration).
+  const valid = u ? await verifyPassword(password, u.passwordHash) : await verifyAgainstDummy(password);
+  if (!u || !valid) {
     await recordFailedLogin(email);
+    await database.collection(C.audit).insertOne({ userId: null, email, action: "login.failed", target: "session", detail: { ip: await clientIp() }, at: new Date() });
     return { ok: false, message: "Email or password is incorrect." };
   }
   await createSession(u._id.toHexString());
-  await (await db()).collection(C.users).updateOne({ _id: u._id }, { $set: { lastLoginAt: new Date() } });
+  await database.collection(C.users).updateOne({ _id: u._id }, { $set: { lastLoginAt: new Date() } });
+  await database.collection(C.audit).insertOne({ userId: u._id.toHexString(), email, action: "login", target: "session", detail: { ip: await clientIp() }, at: new Date() });
   redirect(u.mustChangePassword ? "/admin/account?first=1" : "/admin");
 }
 
@@ -41,10 +55,12 @@ export async function logout(): Promise<void> {
 }
 
 export async function changePassword(_: AdminState, fd: FormData): Promise<AdminState> {
-  const me = await requireAdmin();
-  const current = String(fd.get("current") ?? "");
+  const me = await requireAdmin(undefined, { allowPendingPassword: true });
+  const current = String(fd.get("current") ?? "").slice(0, 1024);
   const next = String(fd.get("next") ?? "");
   if (next.length < 12) return { ok: false, errors: { next: "Use at least 12 characters." } };
+  if (next.length > 256) return { ok: false, errors: { next: "Use at most 256 characters." } };
+  if (next === current) return { ok: false, errors: { next: "Choose a password different from the current one." } };
   if (next !== String(fd.get("confirm") ?? "")) return { ok: false, errors: { confirm: "The passwords do not match." } };
   const users = (await db()).collection(C.users);
   const u = await users.findOne({ _id: oid(me.id)! });
@@ -67,7 +83,7 @@ async function parseFields(def: EntityDef, fd: FormData, role: Role, isNew: bool
   const values: Record<string, unknown> = {};
   const options = await loadOptions(def.fields);
   const opts = (f: Field) => f.options ?? (f.optionSource ? options[f.optionSource] ?? [] : []);
-  const MediaZ = z.object({ src: z.string().regex(/^\/(media|uploads)\/[\w\-./]+$/, "Image path must start with /media/ or /uploads/"), alt: z.string().trim().min(3, "Alternative text is required"), caption: z.string().trim().default(""), credit: z.string().trim().default("") });
+  const MediaZ = z.object({ src: z.string().max(300).regex(/^\/(media|uploads)\/(?!.*\.\.)[\w\-/]+(\.[\w\-]+)*\.(jpe?g|png|webp|avif)$/i, "Use an image path under /media/ or /uploads/ ending in .jpg, .png, .webp or .avif"), alt: z.string().trim().min(3, "Alternative text is required"), caption: z.string().trim().default(""), credit: z.string().trim().default("") });
 
   for (const f of def.fields) {
     if (role !== "admin" && f.adminOnly) continue;
@@ -181,8 +197,9 @@ function nest(values: Record<string, unknown>): Record<string, unknown> {
 }
 
 export async function saveEntity(key: string, id: string | null, _: AdminState, fd: FormData): Promise<AdminState> {
-  const def = ENTITIES[key];
+  const def = Object.hasOwn(ENTITIES, key) ? ENTITIES[key] : undefined;
   if (!def) return { ok: false, message: "Unknown record type." };
+  if (id !== null && def.collection !== C.settings && !oid(String(id))) return { ok: false, message: "Invalid record." };
   const user = await requireAdmin(def.roles);
   if (!canEdit(def, user)) return { ok: false, message: "You do not have permission to edit this." };
   const isNew = !id && def.collection !== C.settings;
@@ -238,30 +255,34 @@ export async function saveEntity(key: string, id: string | null, _: AdminState, 
 }
 
 export async function setStatus(key: string, id: string, status: "draft" | "published" | "archived"): Promise<void> {
-  const def = ENTITIES[key];
+  const def = Object.hasOwn(ENTITIES, key) ? ENTITIES[key] : undefined;
   if (!def?.hasStatus) return;
   const user = await requireAdmin(["admin"]);
+  if (!["draft", "published", "archived"].includes(status)) throw new Error("Invalid status");
+  const _id = idOrThrow(id);
   const coll = (await db()).collection(def.collection);
   if (status === "published" && key === "treks") {
-    const t = await coll.findOne({ _id: oid(id)! });
-    if (!t?.itinerary?.length || !(t.basePrice > 0) || !t.heroImage) redirect(`/admin/${key}/${id}?publishError=1`);
+    const t = await coll.findOne({ _id });
+    if (!t?.itinerary?.length || !(t.basePrice > 0) || !t.heroImage) redirect(`/admin/${key}/${_id.toHexString()}?publishError=1`);
   }
-  await coll.updateOne({ _id: oid(id)! }, { $set: { status, updatedAt: new Date() } });
+  await coll.updateOne({ _id }, { $set: { status, updatedAt: new Date() } });
   await audit(user, `status.${status}`, `${def.collection}/${id}`);
   def.tags.forEach((t) => updateTag(t));
 }
 
 export async function deleteEntity(key: string, id: string): Promise<void> {
-  const def = ENTITIES[key];
+  const def = Object.hasOwn(ENTITIES, key) ? ENTITIES[key] : undefined;
   if (!def?.canDelete) return;
   const user = await requireAdmin(def.roles);
+  const _id = idOrThrow(id);
+  const hex = _id.toHexString();
   const database = await db();
   if (key === "departures") {
-    const n = await database.collection(C.bookings).countDocuments({ departureId: id });
-    if (n) redirect(`/admin/departures/${id}?deleteBlocked=1`);
+    const n = await database.collection(C.bookings).countDocuments({ departureId: hex });
+    if (n) redirect(`/admin/departures/${hex}?deleteBlocked=1`);
   }
-  await database.collection(def.collection).deleteOne({ _id: oid(id)! });
-  await audit(user, "delete", `${def.collection}/${id}`);
+  await database.collection(def.collection).deleteOne({ _id });
+  await audit(user, "delete", `${def.collection}/${hex}`);
   def.tags.forEach((t) => updateTag(t));
   redirect(`/admin/${key}?deleted=1`);
 }
@@ -272,7 +293,7 @@ export async function updateBooking(id: string, _: AdminState, fd: FormData): Pr
   const status = String(fd.get("status") ?? "");
   if (!BOOKING_STATUSES.includes(status as never)) return { ok: false, message: "Choose a valid status." };
   const adminNotes = String(fd.get("adminNotes") ?? "").slice(0, 5000);
-  const r = await (await db()).collection(C.bookings).updateOne({ _id: oid(id)! }, { $set: { status, adminNotes, updatedAt: new Date() } });
+  const r = await (await db()).collection(C.bookings).updateOne({ _id: idOrThrow(id) }, { $set: { status, adminNotes, updatedAt: new Date() } });
   if (!r.matchedCount) return { ok: false, message: "Booking not found." };
   await audit(user, "booking.update", `bookings/${id}`, { status });
   updateTag("departures");
@@ -296,9 +317,11 @@ export async function createOfflineBooking(_: AdminState, fd: FormData): Promise
   if (!p.success) return { ok: false, errors: Object.fromEntries(p.error.issues.map((i) => [String(i.path[0]), i.message])) };
   const v = p.data;
   const database = await db();
-  const dep = await database.collection(C.departures).findOne({ _id: oid(v.departureId)! });
+  const depId = oid(v.departureId);
+  const dep = depId ? await database.collection(C.departures).findOne({ _id: depId }) : null;
   if (!dep) return { ok: false, errors: { departureId: "Departure not found" } };
-  const trek = await database.collection(C.treks).findOne({ _id: oid(dep.trekId)! });
+  const trekOid = oid(String(dep.trekId));
+  const trek = trekOid ? await database.collection(C.treks).findOne({ _id: trekOid }) : null;
   const held = await database.collection(C.bookings).aggregate<{ n: number }>([
     { $match: { departureId: v.departureId, status: { $in: SEAT_HOLDING } } }, { $group: { _id: null, n: { $sum: "$travellers" } } },
   ]).toArray();
@@ -323,7 +346,8 @@ export async function createOfflineBooking(_: AdminState, fd: FormData): Promise
 // ------------------------------------------------------------ inquiries ---
 export async function setInquiryStatus(id: string, status: "new" | "answered" | "closed"): Promise<void> {
   const user = await requireAdmin(["admin"]);
-  await (await db()).collection(C.inquiries).updateOne({ _id: oid(id)! }, { $set: { status, updatedAt: new Date() } });
+  if (!["new", "answered", "closed"].includes(status)) throw new Error("Invalid status");
+  await (await db()).collection(C.inquiries).updateOne({ _id: idOrThrow(id) }, { $set: { status, updatedAt: new Date() } });
   await audit(user, "inquiry.status", `inquiries/${id}`, { status });
 }
 
@@ -358,7 +382,7 @@ const UserSchema = z.object({
   name: z.string().trim().min(2).max(80),
   email: z.string().trim().toLowerCase().email(),
   role: z.enum(["admin", "content"]),
-  password: z.string().min(12, "Temporary password must be at least 12 characters"),
+  password: z.string().min(12, "Temporary password must be at least 12 characters").max(256),
 });
 
 export async function createUser(_: AdminState, fd: FormData): Promise<AdminState> {
@@ -374,9 +398,11 @@ export async function createUser(_: AdminState, fd: FormData): Promise<AdminStat
 
 export async function setUserActive(id: string, active: boolean): Promise<void> {
   const me = await requireAdmin(["admin"]);
-  if (id === me.id) return; // cannot lock yourself out
+  if (typeof active !== "boolean") throw new Error("Invalid value");
+  const _id = idOrThrow(id);
+  if (_id.toHexString() === me.id) return; // cannot lock yourself out
   const database = await db();
-  await database.collection(C.users).updateOne({ _id: oid(id)! }, { $set: { active } });
-  if (!active) await database.collection(C.sessions).deleteMany({ userId: id });
+  await database.collection(C.users).updateOne({ _id }, { $set: { active } });
+  if (!active) await database.collection(C.sessions).deleteMany({ userId: _id.toHexString() });
   await audit(me, active ? "user.activate" : "user.deactivate", `users/${id}`);
 }

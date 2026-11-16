@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
 import { randomBytes } from "node:crypto";
@@ -12,16 +11,30 @@ import { COUNTRY_CODES } from "../countries";
 import { convert } from "../format";
 import type { Departure, Experience, Trek, SiteSettings } from "../types";
 import { DEFAULT_SETTINGS } from "../defaults";
+import { clientIp } from "../net";
 
 export type FormState = { ok: boolean; message?: string; errors?: Record<string, string> };
 
+// Per-kind global caps per hour. These hold even when the client IP cannot be
+// trusted (spoofed headers, no proxy), so a flood cannot fill the database.
+const GLOBAL_PER_HOUR: Record<string, number> = { booking: 120, inquiry: 120 };
+let logIndexed = false;
+
 async function rateLimited(kind: string, perHour: number): Promise<boolean> {
-  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
-  const database = await db();
+  const ip = await clientIp();
+  const log = (await db()).collection("submissionLog");
+  if (!logIndexed) {
+    await log.createIndex({ at: 1 }, { expireAfterSeconds: 2 * 3600 }).catch(() => {});
+    await log.createIndex({ kind: 1, ip: 1, at: 1 }).catch(() => {});
+    logIndexed = true;
+  }
   const since = new Date(Date.now() - 3600_000);
-  const n = await database.collection("submissionLog").countDocuments({ ip, kind, at: { $gt: since } });
-  if (n >= perHour) return true;
-  await database.collection("submissionLog").insertOne({ ip, kind, at: new Date() });
+  const [mine, all] = await Promise.all([
+    log.countDocuments({ ip, kind, at: { $gt: since } }),
+    log.countDocuments({ kind, at: { $gt: since } }),
+  ]);
+  if (mine >= perHour || all >= (GLOBAL_PER_HOUR[kind] ?? 120)) return true;
+  await log.insertOne({ ip, kind, at: new Date() });
   return false;
 }
 

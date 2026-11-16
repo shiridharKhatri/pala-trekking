@@ -13,7 +13,7 @@ export default function PanelLayout({ children }: LayoutProps<"/admin">) {
 }
 
 async function Gate({ children }: { children: React.ReactNode }) {
-  const user = await requireAdmin();
+  const user = await requireAdmin(undefined, { allowPendingPassword: true });
   return (
     <div className="a-shell">
       <a href="#a-main" className="a-skip">Skip to content</a>

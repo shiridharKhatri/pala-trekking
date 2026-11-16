@@ -9,7 +9,7 @@ export default async function Bookings({ searchParams }: PageProps<"/admin/booki
   await requireAdmin(["admin"]);
   const sp = await searchParams;
   const status = typeof sp.status === "string" && BOOKING_STATUSES.includes(sp.status as never) ? sp.status : "";
-  const q = typeof sp.q === "string" ? sp.q.trim() : "";
+  const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 100) : "";
   const filter: Record<string, unknown> = {};
   if (status) filter.status = status;
   if (q) {

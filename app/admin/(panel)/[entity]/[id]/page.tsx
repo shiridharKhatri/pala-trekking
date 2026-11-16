@@ -9,7 +9,7 @@ import { EntityForm } from "@/components/admin/EntityForm";
 export default async function EntityEdit({ params, searchParams }: PageProps<"/admin/[entity]/[id]">) {
   const { entity, id } = await params;
   const sp = await searchParams;
-  const def = ENTITIES[entity];
+  const def = Object.hasOwn(ENTITIES, entity) ? ENTITIES[entity] : undefined;
   if (!def || def.collection === "settings") notFound();
   const user = await requireAdmin(def.roles);
   const isNew = id === "new";

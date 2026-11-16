@@ -3,7 +3,7 @@ import { changePassword } from "@/lib/actions/admin";
 import { SimpleForm } from "@/components/admin/SimpleForm";
 
 export default async function Account({ searchParams }: PageProps<"/admin/account">) {
-  const me = await requireAdmin();
+  const me = await requireAdmin(undefined, { allowPendingPassword: true });
   const sp = await searchParams;
   return (
     <>

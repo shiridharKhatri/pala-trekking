@@ -67,6 +67,9 @@ await db.collection("sessions").createIndex({ expiresAt: 1 }, { expireAfterSecon
 await db.collection("sessions").createIndex({ tokenHash: 1 }, { unique: true });
 await db.collection("pages").createIndex({ slug: 1 }, { unique: true });
 await db.collection("loginAttempts").createIndex({ at: 1 }, { expireAfterSeconds: 900 });
+await db.collection("loginAttempts").createIndex({ email: 1, at: 1 });
+await db.collection("submissionLog").createIndex({ at: 1 }, { expireAfterSeconds: 7200 });
+await db.collection("audit").createIndex({ at: -1 });
 
 if (!(await empty("treks"))) {
   console.log("treks already present; run with --reset to replace sample content");
