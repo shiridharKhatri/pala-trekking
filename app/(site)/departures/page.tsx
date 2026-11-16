@@ -9,6 +9,7 @@ import { departureStatusLabel } from "@/lib/departures";
 import { DEPARTURE_STATUSES } from "@/lib/types";
 import { Pagination } from "@/components/Pagination";
 import { parsePage, slicePage } from "@/lib/pagination";
+import { BoardSkeleton } from "@/components/Skeletons";
 
 
 export const metadata: Metadata = {
@@ -29,7 +30,7 @@ export default function DeparturesPage({ searchParams }: PageProps<"/departures"
         <p className="lede">Upcoming Pala Trekking groups only. We show how many people are going and how many spaces remain. Names, nationalities, photos and contact details are never published.</p>
       </header>
       <section className="wrap" style={{ paddingBottom: "var(--sc-section)" }}>
-        <Suspense fallback={<p className="empty">Loading departures…</p>}>
+        <Suspense fallback={<BoardSkeleton />}>
           <Board searchParams={searchParams as Promise<SP>} />
         </Suspense>
       </section>

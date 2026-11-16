@@ -6,6 +6,7 @@ import { getPublishedExperiences, getPublishedTreks, getRegions, getSettings, ge
 import { Price } from "@/components/CurrencyProvider";
 import { CompareSync } from "@/components/CompareSync";
 import { difficultyLabel, feet, gatewayLabel, metres } from "@/lib/format";
+import { CompareSkeleton } from "@/components/Skeletons";
 
 export const metadata: Metadata = {
   title: "Compare treks",
@@ -24,7 +25,7 @@ export default function ComparePage({ searchParams }: PageProps<"/compare">) {
         <p className="lede">Choose two or three Pala Trekking treks. Every value comes from the same structured fields.</p>
       </header>
       <section className="wrap" style={{ paddingBottom: "var(--sc-section)" }}>
-        <Suspense fallback={<p className="empty">Loading comparison…</p>}>
+        <Suspense fallback={<CompareSkeleton />}>
           <Comparison searchParams={searchParams as Promise<SP>} />
         </Suspense>
       </section>

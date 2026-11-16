@@ -7,6 +7,7 @@ import { getActiveAdvisories, getExperiencesForTrek, getPublicDepartures, getTre
 import { BookingForm } from "@/components/BookingForm";
 import { countryOptions } from "@/lib/countries";
 import { addDays } from "@/lib/format";
+import { BookingSkeleton } from "@/components/Skeletons";
 
 export const metadata: Metadata = { title: "Request a booking", robots: { index: false } };
 
@@ -15,7 +16,7 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) 
 
 export default function BookPage({ params, searchParams }: PageProps<"/book/[slug]">) {
   return (
-    <Suspense fallback={<div className="page-head wrap"><p className="empty">Loading…</p></div>}>
+    <Suspense fallback={<BookingSkeleton />}>
       <Book params={params} searchParams={searchParams as Promise<SP>} />
     </Suspense>
   );

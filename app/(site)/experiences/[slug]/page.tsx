@@ -7,6 +7,7 @@ import { getExperienceBySlug, getPublishedExperiences, getPublishedTreks, getSet
 import { Price } from "@/components/CurrencyProvider";
 import { RichText } from "@/components/RichText";
 import { date } from "@/lib/format";
+import { DetailSkeleton } from "@/components/Skeletons";
 
 export async function generateStaticParams() {
   return (await getPublishedExperiences()).map((e) => ({ slug: e.slug }));
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: PageProps<"/experiences/[slug
 }
 
 export default function ExperiencePage({ params }: PageProps<"/experiences/[slug]">) {
-  return <Suspense fallback={<div className="page-head wrap" />}><Detail params={params} /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><Detail params={params} /></Suspense>;
 }
 
 async function Detail({ params }: { params: Promise<{ slug: string }> }) {

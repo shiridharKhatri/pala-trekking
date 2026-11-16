@@ -289,3 +289,43 @@ a.a-pager__btn:hover { border-color: var(--a-ink); }
 .a-headfig div { display: grid; gap: 0.15rem; }
 .a-headfig b { font: 650 1.6rem/1.1 var(--sc-font-display); font-stretch: 108%; letter-spacing: -0.02em; }
 .a-headfig span { font-size: 13px; color: var(--a-soft); }
+
+/* --------------------------------------------------------- loading states -- */
+.a-skel {
+  display: block; flex: none; max-width: 100%;
+  background: linear-gradient(90deg, #e4e7e2 0%, #eef0ec 40%, #e4e7e2 80%) 0 0 / 300% 100%;
+  animation: a-shimmer 1.4s ease-in-out infinite;
+}
+.a-skel--dark { background-image: linear-gradient(90deg, #22292d 0%, #2c3438 40%, #22292d 80%); border-radius: 4px; }
+@keyframes a-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.a-skelpage { display: grid; gap: 1.25rem; align-content: start; position: relative; }
+.a-skelhead { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
+.a-skelhead > div { display: grid; gap: 0.6rem; }
+.a-skelcard { display: grid; gap: 0.75rem; align-content: start; }
+.a-skelchart { min-height: 18rem; height: 100%; }
+.a-skelplot { width: 100%; flex: 1; min-height: 12rem; border-radius: 6px; }
+.a-skelring { width: 9rem; height: 9rem; border-radius: 50%; margin: 0.5rem auto; }
+.a-skelrow { display: grid; grid-template-columns: 1fr 1.2fr 1.6fr 0.8fr 0.7fr; gap: 1rem; align-items: center; padding: 0.55rem 0; border-top: 1px solid #eceee9; }
+.a-skelrow:first-child { border-top: 0; }
+.a-skelnav { display: grid; gap: 1.4rem; margin-top: 0.5rem; }
+.a-skelnav > div { display: grid; gap: 0.7rem; }
+/* Indeterminate progress bar: the one moving signal while a page streams in. */
+.a-loadbar { position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 60; overflow: hidden; background: color-mix(in oklab, var(--a-accent) 18%, transparent); }
+.a-loadbar::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 35%; background: var(--a-accent); animation: a-loadbar 1.1s cubic-bezier(0.23, 1, 0.32, 1) infinite; }
+@keyframes a-loadbar { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+@media (max-width: 760px) { .a-skelrow { grid-template-columns: 1fr 1fr; } .a-skelrow > :nth-child(n + 3) { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .a-skel { animation: none; background: #e7eae6; }
+  .a-skel--dark { background: #262d31; }
+  .a-loadbar::after { animation: none; width: 100%; opacity: 0.5; }
+}
+
+/* ------------------------------------------------------------- admin 404 -- */
+.a-404 { display: grid; place-items: center; min-height: 60vh; }
+.a-404__card { max-width: 32rem; text-align: center; display: grid; gap: 0.9rem; justify-items: center; padding: 2.5rem 2rem; }
+.a-404__code { font: 600 12px var(--sc-font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--a-accent); }
+.a-404__card h1 { margin: 0; font-family: var(--sc-font-display); font-stretch: 112%; font-size: 1.75rem; letter-spacing: -0.02em; }
+.a-404__card p { margin: 0; color: var(--a-soft); }
+.a-404__card svg { color: #c3c9c4; }
+/* Link-buttons: beat `.admin a { color: inherit }` so primary text stays white. */
+.admin a.a-btn--primary, .admin a.a-btn--primary:hover { color: #fff; }

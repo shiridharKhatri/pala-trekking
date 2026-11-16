@@ -3,10 +3,11 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { logout } from "@/lib/actions/admin";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { AdminShellSkeleton } from "@/components/admin/AdminSkeleton";
 
 export default function PanelLayout({ children }: LayoutProps<"/admin">) {
   return (
-    <Suspense fallback={<div className="a-loading">Loading…</div>}>
+    <Suspense fallback={<AdminShellSkeleton />}>
       <Gate>{children}</Gate>
     </Suspense>
   );

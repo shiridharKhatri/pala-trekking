@@ -16,6 +16,7 @@ import { Price } from "@/components/CurrencyProvider";
 import { CompareToggle } from "@/components/Compare";
 import { difficultyLabel, feet, gatewayLabel, metres } from "@/lib/format";
 import { bookable } from "@/lib/departures";
+import { HeroSkeleton } from "@/components/Skeletons";
 
 export async function generateStaticParams() {
   const slugs = await getPublishedSlugs();
@@ -36,7 +37,7 @@ export async function generateMetadata({ params }: PageProps<"/treks/[slug]">): 
 
 export default function TrekPage({ params }: PageProps<"/treks/[slug]">) {
   return (
-    <Suspense fallback={<div className="trek-hero" aria-busy="true" />}>
+    <Suspense fallback={<HeroSkeleton />}>
       <TrekDetail params={params} />
     </Suspense>
   );

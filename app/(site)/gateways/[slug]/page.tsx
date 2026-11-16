@@ -7,6 +7,7 @@ import { getGateways, getPublishedTreks, getRegions } from "@/lib/data/public";
 import { TrekCard } from "@/components/TrekCard";
 import { ScrollStage } from "@/components/ScrollStage";
 import { metres } from "@/lib/format";
+import { HeroSkeleton } from "@/components/Skeletons";
 
 export function generateStaticParams() {
   return [{ slug: "kathmandu" }, { slug: "pokhara" }];
@@ -20,7 +21,7 @@ export async function generateMetadata({ params }: PageProps<"/gateways/[slug]">
 }
 
 export default function GatewayPage({ params }: PageProps<"/gateways/[slug]">) {
-  return <Suspense fallback={<div className="page-head wrap" />}><Gateway params={params} /></Suspense>;
+  return <Suspense fallback={<HeroSkeleton height="72svh" />}><Gateway params={params} /></Suspense>;
 }
 
 async function Gateway({ params }: { params: Promise<{ slug: string }> }) {

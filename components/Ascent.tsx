@@ -222,7 +222,16 @@ function StopWeather({ sp, dayOffset, weather, disabled, mode, forecastDates, lo
   sp: StayPoint; dayOffset: number; weather: PointWeather | null; disabled: boolean; mode: Mode; forecastDates: string[]; loading: boolean;
 }) {
   const head = <span className="wx__kind">{sp.name} · {metres(sp.elevationM)}</span>;
-  if (loading && !disabled) return <div className="wx wx--fallback" aria-busy="true">{head}<p>Loading weather…</p></div>;
+  if (loading && !disabled) return (
+    <div className="wx wx--loading" aria-busy="true">
+      <span className="skel" style={{ width: 34, height: 34, borderRadius: "50%" }} />
+      <div className="wx__lines">
+        <span className="skel" style={{ width: "9rem", height: 18 }} />
+        <span className="skel" style={{ width: "min(16rem, 90%)", height: 10 }} />
+        <span className="vh">Loading weather for {sp.name}</span>
+      </div>
+    </div>
+  );
   if (disabled) {
     return (
       <div className="wx wx--fallback">

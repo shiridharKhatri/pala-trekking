@@ -5,11 +5,12 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { db, C } from "@/lib/db";
 import { date, money } from "@/lib/format";
+import { DetailSkeleton } from "@/components/Skeletons";
 
 export const metadata: Metadata = { title: "Booking request received", robots: { index: false } };
 
 export default function Confirmation({ params }: PageProps<"/book/confirmation/[ref]">) {
-  return <Suspense fallback={<div className="page-head wrap" />}><Body params={params} /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><Body params={params} /></Suspense>;
 }
 
 async function Body({ params }: { params: Promise<{ ref: string }> }) {

@@ -8,6 +8,7 @@ import { DIFFICULTIES } from "@/lib/types";
 import { difficultyLabel } from "@/lib/format";
 import { Pagination } from "@/components/Pagination";
 import { parsePage, slicePage } from "@/lib/pagination";
+import { CatalogueSkeleton } from "@/components/Skeletons";
 
 
 export const metadata: Metadata = {
@@ -34,7 +35,7 @@ export default function TreksPage({ searchParams }: PageProps<"/treks">) {
         <p className="lede">Every trek starts from Kathmandu or Pokhara. Filter by what matters to you, then compare up to three.</p>
       </header>
       <section className="wrap" style={{ paddingBottom: "var(--sc-section)" }}>
-        <Suspense fallback={<p className="empty">Loading treks…</p>}>
+        <Suspense fallback={<CatalogueSkeleton />}>
           <Catalogue searchParams={searchParams as Promise<SP>} />
         </Suspense>
       </section>

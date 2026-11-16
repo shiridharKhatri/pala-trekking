@@ -5,6 +5,7 @@ import path from "node:path";
 import { Suspense } from "react";
 import { Pagination } from "@/components/Pagination";
 import { parsePage, slicePage } from "@/lib/pagination";
+import { TableSkeleton } from "@/components/Skeletons";
 
 export const metadata: Metadata = { title: "Photo credits", robots: { index: false } };
 
@@ -24,7 +25,7 @@ export default function Credits({ searchParams }: PageProps<"/credits">) {
         <p className="lede">Photographs on this site are used under free licences from Wikimedia Commons. Some are cropped or resized.</p>
       </header>
       <section className="wrap" style={{ paddingBottom: "var(--sc-section)" }}>
-        <Suspense fallback={<p className="empty">Loading credits…</p>}>
+        <Suspense fallback={<TableSkeleton rows={10} cols={3} label="Loading credits" />}>
           <CreditTable searchParams={searchParams} />
         </Suspense>
       </section>
