@@ -752,3 +752,16 @@ a.pager__btn:active { transform: translateY(1px); }
 /* position: relative makes this the containing block for visually-hidden
    (absolute) labels inside, so they are clipped here instead of widening the page. */
 .scroll-x { min-width: 0; max-width: 100%; position: relative; }
+
+/* ---------------------------------------------------------------- prices -- */
+/* "≈" + amount stay on one line; long currencies (NPR) must still fit. */
+.price { white-space: nowrap; }
+.price__approx { font-size: 0.62em; font-weight: 500; opacity: 0.72; margin-right: 0.18em; vertical-align: 0.12em; }
+/* Panels size their headline price to their own width, and their rows may
+   shrink instead of being stretched by one long value. */
+.book-panel { container-type: inline-size; }
+.book-panel > * { min-width: 0; }
+.book-panel__price strong { font-size: min(var(--sc-t-2xl), 12.5cqi); }
+.trek-card__foot { flex-wrap: wrap; row-gap: var(--sc-2); }
+.facts dd .price { white-space: normal; }
+.facts dd .price__amt { white-space: nowrap; }

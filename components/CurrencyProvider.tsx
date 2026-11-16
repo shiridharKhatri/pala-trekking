@@ -34,17 +34,32 @@ export function useCurrency() {
 }
 
 /** Shows an amount in the visitor's chosen currency, labelled as an estimate
- *  when it differs from the base (transaction) currency (PRD section 10). */
+ *  when it differs from the base (transaction) currency (PRD section 10).
+ *  The "≈" marker and the amount never wrap apart, and the marker is read as
+ *  "approximately" by screen readers. */
 export function Price({ amount, showBase = false }: { amount: number; showBase?: boolean }) {
   const { settings, selected } = useCurrency();
   const converted = convert(amount, selected, settings.base, settings.rates);
   if (selected === settings.base || converted == null) {
-    return <span className="nums">{money(amount, settings.base)}</span>;
+    return <span className="price nums">{money(amount, settings.base)}</span>;
   }
   return (
-    <span className="nums">
-      <span title={`Estimate. You pay in ${settings.base}.`}>{money(converted, selected, { estimate: true })}</span>
+    <span className="price nums" title={`Estimate. You pay ${money(amount, settings.base)} in ${settings.base}.`}>
+      <span className="price__approx" aria-hidden="true">≈</span>
+      <span className="vh">approximately </span>
+      <span className="price__amt">{money(converted, selected)}</span>
       {showBase && <span className="price-base"> ({money(amount, settings.base)})</span>}
+    </span>
+  );
+}
+
+/** The line under a headline price: what is actually charged. */
+export function ChargeNote({ amount, prefix = "" }: { amount: number; prefix?: string }) {
+  const { settings, selected } = useCurrency();
+  const estimate = selected !== settings.base && convert(amount, selected, settings.base, settings.rates) != null;
+  return (
+    <span className="label">
+      {prefix}{estimate ? <>Estimate. Charged as <span className="nums">{money(amount, settings.base)}</span></> : <>Charged in {settings.base}</>}
     </span>
   );
 }

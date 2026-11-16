@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { getExperienceBySlug, getPublishedExperiences, getPublishedTreks, getSettings } from "@/lib/data/public";
-import { Price } from "@/components/CurrencyProvider";
+import { getExperienceBySlug, getPublishedExperiences, getPublishedTreks } from "@/lib/data/public";
+import { ChargeNote, Price } from "@/components/CurrencyProvider";
 import { RichText } from "@/components/RichText";
 import { date } from "@/lib/format";
 import { DetailSkeleton } from "@/components/Skeletons";
@@ -25,7 +25,7 @@ export default function ExperiencePage({ params }: PageProps<"/experiences/[slug
 
 async function Detail({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [e, treks, settings] = await Promise.all([getExperienceBySlug(slug), getPublishedTreks(), getSettings()]);
+  const [e, treks] = await Promise.all([getExperienceBySlug(slug), getPublishedTreks()]);
   if (!e) notFound();
   const eligible = treks.filter((t) => e.eligibleTrekIds.includes(t.id));
   return (
@@ -61,7 +61,7 @@ async function Detail({ params }: { params: Promise<{ slug: string }> }) {
             <div className="book-panel__price">
               <span className="label">Adds to your booking</span>
               <strong><Price amount={e.price} /></strong>
-              <span className="label">Fixed price, charged in {settings.currency.base}</span>
+              <ChargeNote amount={e.price} prefix="Fixed price. " />
             </div>
             <p className="prose" style={{ margin: 0, fontSize: "var(--sc-t-sm)" }}>Add it while booking one of these treks. You can also skip it.</p>
             <ul>

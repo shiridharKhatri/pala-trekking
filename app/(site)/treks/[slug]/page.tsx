@@ -12,7 +12,7 @@ import { getRouteWeather } from "@/lib/weather";
 import { ScrollStage } from "@/components/ScrollStage";
 import { Ascent } from "@/components/Ascent";
 import { DepartureBoard } from "@/components/DepartureBoard";
-import { Price } from "@/components/CurrencyProvider";
+import { ChargeNote, Price } from "@/components/CurrencyProvider";
 import { CompareToggle } from "@/components/Compare";
 import { difficultyLabel, feet, gatewayLabel, metres } from "@/lib/format";
 import { bookable } from "@/lib/departures";
@@ -154,7 +154,7 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
             <div className="book-panel__price">
               <span className="label">From, per person</span>
               <strong><Price amount={trek.basePrice} /></strong>
-              <span className="label">Charged in {settings.currency.base}</span>
+              <ChargeNote amount={trek.basePrice} />
             </div>
             {suspended ? (
               <p className="notice-box">Bookings for this trek are paused while a route advisory is active.</p>
