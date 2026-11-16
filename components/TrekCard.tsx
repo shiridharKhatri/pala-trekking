@@ -1,3 +1,4 @@
+import { ViewTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { TrekCard as T } from "@/lib/types";
@@ -10,7 +11,12 @@ export function TrekCard({ trek, regionName, priority = false, style, marker = f
     <article className="trek-card" style={style} data-alt={marker ? trek.maxAltitudeM : undefined} data-alt-label={marker ? trek.name : undefined}>
       <div className="trek-card__media">
         {trek.heroImage && (
-          <Image src={trek.heroImage.src} alt={trek.heroImage.alt} fill sizes="(max-width: 700px) 92vw, 28rem" quality={72} priority={priority} style={{ objectFit: "cover" }} />
+          // Shared name with the trek page hero: the photo morphs into the hero on navigation.
+          <ViewTransition name={`trek-photo-${trek.slug}`} share="trek-morph" default="none">
+            <div className="trek-card__photo">
+              <Image src={trek.heroImage.src} alt={trek.heroImage.alt} fill sizes="(max-width: 700px) 92vw, 28rem" quality={72} priority={priority} style={{ objectFit: "cover" }} />
+            </div>
+          </ViewTransition>
         )}
         <span className="chip trek-card__badge">From {gatewayLabel[trek.gateway]}</span>
       </div>

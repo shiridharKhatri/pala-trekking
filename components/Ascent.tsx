@@ -87,6 +87,19 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
   const drawn = reduce ? 1 : progress;
   const cur = days[active];
 
+  // The walker: rides the drawn line, interpolating the stored elevations
+  // between known stages. Reduced motion parks it on the active day.
+  const n = Math.max(1, days.length - 1);
+  const t = reduce ? active : drawn * n;
+  const before = [...known].reverse().find((p) => p.i <= t) ?? known[0];
+  const after = known.find((p) => p.i >= t) ?? known[known.length - 1];
+  const walkerE = before && after
+    ? (after.i === before.i ? before.e : before.e + ((t - before.i) / (after.i - before.i)) * (after.e - before.e))
+    : null;
+  const walkerX = known.length ? x(Math.min(Math.max(t, known[0].i), known[known.length - 1].i)) : 0;
+  const curWx = cur ? stopIcon(cur, spById, weather, weatherDisabled, mode) : null;
+  const o2 = cur?.elevationM != null ? oxygenPct(cur.elevationM) : null;
+
   return (
     <div className="ascent">
       <div className="ascent__chart">
@@ -126,12 +139,35 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
               </g>
             );
           })}
+          {walkerE != null && (
+            <g className="profile__walker" style={{ transform: `translate(${walkerX.toFixed(1)}px, ${y(walkerE).toFixed(1)}px)` }} aria-hidden="true">
+              <line className="profile__walker-drop" x1={0} x2={0} y1={0} y2={H - padB - y(walkerE)} />
+              <circle className="profile__walker-halo" r={11} />
+              <circle className="profile__walker-dot" r={5} />
+            </g>
+          )}
+          {curWx && cur?.elevationM != null && (() => {
+            // Weather for tonight's stop pops in above the active stop's label.
+            const sx = x(active), sz = 24;
+            const ix = sx > W - 120 ? sx - sz : sx < padL + 60 ? sx : sx - sz / 2;
+            return (
+              <g className="profile__wx" key={`${active}-${curWx.kind}`}>
+                <WeatherIcon kind={curWx.kind} label={curWx.label} className="profile__wx-icon" x={ix} y={y(cur.elevationM) - 13 - 14 - sz} size={sz} />
+              </g>
+            );
+          })()}
         </svg>
         {cur && (
           <div className="profile-readout" aria-live="polite">
             <span className="profile-readout__day">Day {cur.day}</span>
             <span className="profile-readout__place">{cur.destination}</span>
             <span className="profile-readout__alt">{metres(cur.elevationM)}</span>
+            {o2 != null && (
+              <span className="profile-readout__o2" title="Estimate from the standard atmosphere. Real values shift with weather and season.">
+                <span className="o2-meter" aria-hidden="true"><span style={{ transform: `scaleX(${(o2 / 100).toFixed(3)})` }} /></span>
+                <span>Oxygen ≈ <b>{Math.round(o2)}%</b> of sea level</span>
+              </span>
+            )}
             <span className="profile-readout__wx">{readoutWeather(cur, spById, weather, weatherDisabled, mode)}</span>
           </div>
         )}
@@ -214,6 +250,23 @@ function readoutWeather(day: ItineraryDay, spById: Map<string, StayPoint>, weath
     return `${sp.name}: forecast for ${date(target)} not yet available.`;
   }
   return sp.name;
+}
+
+/** Share of sea-level oxygen per breath: air pressure ratio from the ICAO standard atmosphere. */
+function oxygenPct(m: number): number {
+  return 100 * Math.pow(Math.max(0, 1 - 2.25577e-5 * m), 5.25588);
+}
+
+/** Icon for the active day's stop in the chosen weather mode, or null when there is nothing honest to show. */
+function stopIcon(day: ItineraryDay, spById: Map<string, StayPoint>, weather: Props["weather"], disabled: string[], mode: Mode) {
+  const sp = day.stayPointId ? spById.get(day.stayPointId) : undefined;
+  if (!sp || disabled.includes(sp.id) || !sp.weatherEnabled) return null;
+  const pw = weather?.points[sp.id];
+  if (!pw) return null;
+  const code = mode.kind === "now" ? pw.current?.code : pw.daily.find((f) => f.date === addDays(mode.start, day.day - 1))?.code;
+  if (code == null) return null;
+  const d = describe(code);
+  return { kind: d.icon, label: `${sp.name}: ${d.label}` };
 }
 
 const fmt = (n: number | null) => (n == null ? "?" : Math.round(n));

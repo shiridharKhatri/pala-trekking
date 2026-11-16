@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { Suspense, ViewTransition } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -83,7 +83,11 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
       <section className="trek-hero" data-rail-hide data-sc-act="flow" aria-labelledby="trek-title" data-alt={trek.maxAltitudeM} data-alt-label={`Highest point, ${trek.name}`}>
         {trek.heroImage && (
           <div className="trek-hero__img" data-sc-parallax="1.6">
-            <Image src={trek.heroImage.src} alt={trek.heroImage.alt} fill priority sizes="100vw" quality={80} style={{ objectFit: "cover" }} />
+            <ViewTransition name={`trek-photo-${trek.slug}`} share="trek-morph" default="none">
+              <div className="trek-hero__photo">
+                <Image src={trek.heroImage.src} alt={trek.heroImage.alt} fill priority sizes="100vw" quality={80} style={{ objectFit: "cover" }} />
+              </div>
+            </ViewTransition>
           </div>
         )}
         <div className="trek-hero__scrim" />

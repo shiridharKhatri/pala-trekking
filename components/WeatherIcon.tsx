@@ -1,11 +1,12 @@
 import type { WeatherIcon as Kind } from "@/lib/weather-codes";
 
 // Drawn line icons (no emoji), sized by CSS, coloured by currentColor.
-export function WeatherIcon({ kind, label }: { kind: Kind; label: string }) {
+// Optional x/y/size place it inside another SVG (the elevation profile).
+export function WeatherIcon({ kind, label, className = "wx__icon", x, y, size }: { kind: Kind; label: string; className?: string; x?: number; y?: number; size?: number }) {
   const s = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   const cloud = <path {...s} d="M9 25h15a5 5 0 0 0 .6-9.97A7 7 0 0 0 11.2 13.3 6 6 0 0 0 9 25z" />;
   return (
-    <svg className="wx__icon" viewBox="0 0 34 34" role="img" aria-label={label}>
+    <svg className={className} viewBox="0 0 34 34" role="img" aria-label={label} x={x} y={y} width={size} height={size}>
       {kind === "clear" && (<g {...s}><circle cx="17" cy="17" r="5.5" />{[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (<line key={a} x1="17" y1="5" x2="17" y2="8" transform={`rotate(${a} 17 17)`} />))}</g>)}
       {kind === "partly" && (<g><g {...s}><circle cx="12" cy="12" r="4" /><line x1="12" y1="4" x2="12" y2="5.5" /><line x1="4" y1="12" x2="5.5" y2="12" /><line x1="6.3" y1="6.3" x2="7.4" y2="7.4" /></g>{cloud}</g>)}
       {kind === "cloud" && cloud}
