@@ -6,6 +6,9 @@ import { TrekCard } from "@/components/TrekCard";
 import { AutoSubmit } from "@/components/AutoSubmit";
 import { DIFFICULTIES } from "@/lib/types";
 import { difficultyLabel } from "@/lib/format";
+import { Pagination } from "@/components/Pagination";
+import { parsePage, slicePage } from "@/lib/pagination";
+
 
 export const metadata: Metadata = {
   title: "Treks in Nepal",
@@ -58,6 +61,7 @@ async function Catalogue({ searchParams }: { searchParams: Promise<SP> }) {
     (!f.q || `${t.name} ${t.summary} ${t.destination} ${t.trailhead}`.toLowerCase().includes(f.q)),
   );
   const active = Object.values(f).some(Boolean);
+  const { items: pageItems, p: pg } = slicePage(results, parsePage(sp.page), 9);
   const regionName = (id: string) => regions.find((r) => r.id === id)?.name;
   const prices = treks.map((t) => t.basePrice);
 
@@ -125,9 +129,12 @@ async function Catalogue({ searchParams }: { searchParams: Promise<SP> }) {
           </p>
         </div>
         {results.length ? (
+          <>
           <div className="catalogue__grid">
-            {results.map((t, i) => <TrekCard key={t.id} trek={t} regionName={regionName(t.regionId)} priority={i < 2} />)}
+            {pageItems.map((t, i) => <TrekCard key={t.id} trek={t} regionName={regionName(t.regionId)} priority={i < 2 && pg.page === 1} />)}
           </div>
+          <Pagination p={pg} path="/treks" params={sp} noun="treks" />
+          </>
         ) : (
           <div className="empty">
             <p>No treks match these filters.</p>

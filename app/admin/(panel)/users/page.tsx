@@ -3,9 +3,13 @@ import { db, C } from "@/lib/db";
 import { createUser, setUserActive } from "@/lib/actions/admin";
 import { SimpleForm } from "@/components/admin/SimpleForm";
 import { dateTime } from "@/lib/format";
+import { Pagination } from "@/components/Pagination";
+import { parsePage, slicePage } from "@/lib/pagination";
 
-export default async function Users() {
+
+export default async function Users({ searchParams }: PageProps<"/admin/users">) {
   const me = await requireAdmin(["admin"]);
+  const sp = await searchParams;
   const users = await (await db()).collection(C.users).find({}, { projection: { passwordHash: 0 } }).sort({ createdAt: 1 }).toArray();
   return (
     <>
@@ -14,7 +18,7 @@ export default async function Users() {
         <table className="a-table">
           <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last sign-in</th><th>Status</th><th><span className="vh">Actions</span></th></tr></thead>
           <tbody>
-            {users.map((u) => {
+            {slicePage(users, parsePage(sp.page), 20).items.map((u) => {
               const id = u._id.toHexString();
               return (
                 <tr key={id}>
@@ -27,6 +31,7 @@ export default async function Users() {
             })}
           </tbody>
         </table>
+        <Pagination p={slicePage(users, parsePage(sp.page), 20).p} path="/admin/users" params={sp} noun="users" variant="admin" />
       </section>
       <section className="a-card">
         <h2>Add a user</h2>

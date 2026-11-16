@@ -7,6 +7,9 @@ import { AutoSubmit } from "@/components/AutoSubmit";
 import { gatewayLabel } from "@/lib/format";
 import { departureStatusLabel } from "@/lib/departures";
 import { DEPARTURE_STATUSES } from "@/lib/types";
+import { Pagination } from "@/components/Pagination";
+import { parsePage, slicePage } from "@/lib/pagination";
+
 
 export const metadata: Metadata = {
   title: "Departure board",
@@ -60,7 +63,15 @@ async function Board({ searchParams }: { searchParams: Promise<SP> }) {
         </label>
         <div data-nojs-submit><button className="btn btn--small" type="submit">Filter</button></div>
       </form>
-      <DepartureBoard departures={list} caption="Upcoming Pala Trekking departures" />
+      {(() => {
+        const { items, p } = slicePage(list, parsePage(sp.page), 15);
+        return (
+          <>
+            <DepartureBoard departures={items} caption="Upcoming Pala Trekking departures" />
+            <Pagination p={p} path="/departures" params={sp} noun="departures" />
+          </>
+        );
+      })()}
       <p className="label" style={{ marginTop: "var(--sc-5)" }}>Status: forming (needs more travellers), confirmed (will run), almost full, full, closed (no longer taking bookings).</p>
     </>
   );

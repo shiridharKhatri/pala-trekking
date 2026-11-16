@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { Suspense } from "react";
+import { Pagination } from "@/components/Pagination";
+import { parsePage, slicePage } from "@/lib/pagination";
 
 export const metadata: Metadata = { title: "Photo credits", robots: { index: false } };
 
@@ -12,8 +15,7 @@ async function loadCredits(): Promise<[string, Credit][]> {
   return Object.entries(JSON.parse(raw) as Record<string, Credit>);
 }
 
-export default async function Credits() {
-  const credits = await loadCredits();
+export default function Credits({ searchParams }: PageProps<"/credits">) {
   return (
     <>
       <header className="page-head wrap">
@@ -22,6 +24,19 @@ export default async function Credits() {
         <p className="lede">Photographs on this site are used under free licences from Wikimedia Commons. Some are cropped or resized.</p>
       </header>
       <section className="wrap" style={{ paddingBottom: "var(--sc-section)" }}>
+        <Suspense fallback={<p className="empty">Loading credits…</p>}>
+          <CreditTable searchParams={searchParams} />
+        </Suspense>
+      </section>
+    </>
+  );
+}
+
+async function CreditTable({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
+  const { items: credits, p } = slicePage(await loadCredits(), parsePage(sp.page), 15);
+  return (
+    <>
         <table className="board">
           <thead><tr><th scope="col">Photo</th><th scope="col">Author</th><th scope="col">Licence</th></tr></thead>
           <tbody>
@@ -34,7 +49,7 @@ export default async function Credits() {
             ))}
           </tbody>
         </table>
-      </section>
+        <Pagination p={p} path="/credits" params={sp} noun="photos" />
     </>
   );
 }

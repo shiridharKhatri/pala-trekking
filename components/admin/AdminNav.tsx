@@ -7,6 +7,7 @@ import { useState } from "react";
 const NAV: { group: string; items: { href: string; label: string; admin?: boolean }[] }[] = [
   { group: "Operations", items: [
     { href: "/admin", label: "Dashboard" },
+    { href: "/admin/analytics", label: "Analytics", admin: true },
     { href: "/admin/bookings", label: "Bookings", admin: true },
     { href: "/admin/departures", label: "Departures", admin: true },
     { href: "/admin/inquiries", label: "Inquiries", admin: true },
@@ -28,6 +29,7 @@ const NAV: { group: string; items: { href: string; label: string; admin?: boolea
   { group: "Settings", items: [
     { href: "/admin/settings", label: "Currency and company", admin: true },
     { href: "/admin/users", label: "Users", admin: true },
+    { href: "/admin/activity", label: "Activity log", admin: true },
   ] },
 ];
 

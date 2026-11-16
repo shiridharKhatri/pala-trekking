@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
-import { ENTITIES, listEntity, loadOptions } from "@/lib/admin/data";
+import { ENTITIES, countEntity, listEntity, loadOptions } from "@/lib/admin/data";
+import { Pagination } from "@/components/Pagination";
+import { paginate, parsePage } from "@/lib/pagination";
+
+const PAGE_SIZE = 25;
 import { setStatus } from "@/lib/actions/admin";
 import { money } from "@/lib/format";
 
@@ -11,7 +15,8 @@ export default async function EntityList({ params, searchParams }: PageProps<"/a
   const def = Object.hasOwn(ENTITIES, entity) ? ENTITIES[entity] : undefined;
   if (!def || def.collection === "settings") notFound();
   const user = await requireAdmin(def.roles);
-  const [rows, opts] = await Promise.all([listEntity(def), loadOptions([{ name: "x", label: "", type: "select", optionSource: "treks" }])]);
+  const pg = paginate(await countEntity(def), parsePage(sp.page), PAGE_SIZE);
+  const [rows, opts] = await Promise.all([listEntity(def, pg.skip, PAGE_SIZE), loadOptions([{ name: "x", label: "", type: "select", optionSource: "treks" }])]);
   const trekName = (id: unknown) => opts.treks?.find((t) => t.value === id)?.label ?? String(id ?? "");
   const show = (k: string, v: unknown) => {
     if (k === "trekId") return trekName(v);
@@ -53,6 +58,7 @@ export default async function EntityList({ params, searchParams }: PageProps<"/a
           </tbody>
         </table>
       </div>
+      <Pagination p={pg} path={`/admin/${def.key}`} params={sp} noun={def.title.toLowerCase()} variant="admin" />
     </>
   );
 }

@@ -1,10 +1,14 @@
 import { requireAdmin } from "@/lib/auth";
 import { mediaLibrary } from "@/lib/admin/media";
 import { UploadForm } from "@/components/admin/UploadForm";
+import { Pagination } from "@/components/Pagination";
+import { parsePage, slicePage } from "@/lib/pagination";
 
-export default async function MediaPage() {
+
+export default async function MediaPage({ searchParams }: PageProps<"/admin/media">) {
   await requireAdmin(["admin", "content"]);
-  const items = await mediaLibrary();
+  const sp = await searchParams;
+  const { items, p: pg } = slicePage(await mediaLibrary(), parsePage(sp.page), 24);
   return (
     <>
       <header className="a-head"><h1>Media</h1></header>
@@ -21,6 +25,7 @@ export default async function MediaPage() {
             </li>
           ))}
         </ul>
+        <Pagination p={pg} path="/admin/media" params={sp} noun="images" variant="admin" />
       </section>
     </>
   );

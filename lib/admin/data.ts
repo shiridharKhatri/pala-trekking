@@ -5,9 +5,13 @@ import { CURRENCY_CODES, ENTITIES, type EntityDef, type Field } from "./entities
 
 // Uncached reads for the admin panel: always the current database state.
 
-export async function listEntity(def: EntityDef): Promise<Record<string, unknown>[]> {
-  const rows = await (await db()).collection(def.collection).find({}).sort(def.sort).limit(500).toArray();
+export async function listEntity(def: EntityDef, skip = 0, limit = 25): Promise<Record<string, unknown>[]> {
+  const rows = await (await db()).collection(def.collection).find({}).sort(def.sort).skip(skip).limit(limit).toArray();
   return plain(rows);
+}
+
+export async function countEntity(def: EntityDef): Promise<number> {
+  return (await db()).collection(def.collection).countDocuments({});
 }
 
 export async function getEntity(def: EntityDef, id: string): Promise<Record<string, unknown> | null> {
