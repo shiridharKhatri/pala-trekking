@@ -13,7 +13,6 @@ export function InquiryForm({ countries }: { countries: { code: string; name: st
   return (
     <form
       action={action}
-      method="post"
       style={{ display: "grid", gap: "var(--sc-4)", maxWidth: "40rem" }}
       // Keeps the typed message when the server returns errors (see BookingForm).
       onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); startTransition(() => action(fd)); }}
