@@ -118,12 +118,20 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
           <div><dt>Trailhead</dt><dd>{trek.trailhead}</dd></div>
           <div><dt>From</dt><dd><Price amount={trek.basePrice} /><small>per person, {settings.currency.base} base</small></dd></div>
         </dl>
-        <ol className="route-line" aria-label="Route" style={{ marginTop: "var(--sc-5)" }}>
-          <li>Pickup <b>{trek.pickupPoint}</b></li>
-          <li>Trailhead <b>{trek.trailhead}</b></li>
-          <li>Destination <b>{trek.destination}</b></li>
-          <li>Ends <b>{trek.endingPoint}</b></li>
-          <li>Return <b>{trek.returnCity}</b></li>
+        <ol className="route-line" aria-label="Route">
+          {[
+            ["Pickup", trek.pickupPoint],
+            ["Trailhead", trek.trailhead],
+            ["Destination", trek.destination],
+            ["Trail ends", trek.endingPoint],
+            ["Return", trek.returnCity],
+          ].filter(([, v]) => v).map(([k, v]) => (
+            <li key={k} data-goal={k === "Destination" || undefined}>
+              <span className="route-line__dot" aria-hidden="true" />
+              <span className="route-line__k">{k}</span>
+              <span className="route-line__v">{v}</span>
+            </li>
+          ))}
         </ol>
       </section>
 

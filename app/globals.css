@@ -520,10 +520,22 @@ body:has(.preview-notice) .page-head { padding-top: calc(var(--header-h) + var(-
   .detail-grid { grid-template-columns: 1fr; }
   .book-panel { position: static; }
 }
-.route-line { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; align-items: center; font: 500 var(--sc-t-sm) var(--sc-font-mono); color: var(--sc-ink-soft); margin: 0; padding: 0; list-style: none; }
-.route-line li { display: flex; gap: 0.8rem; align-items: center; }
-.route-line li + li::before { content: ""; width: 22px; height: 1px; background: var(--sc-accent); }
-.route-line b { color: var(--sc-ink); font-weight: 600; }
+/* Route strip: five stops on one line, destination marked; vertical on phones. */
+.route-line { list-style: none; margin: var(--sc-6) 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--sc-4); counter-reset: none; }
+.route-line li { position: relative; display: grid; gap: 0.3rem; padding-top: 1.4rem; min-width: 0; }
+.route-line li::before { content: ""; position: absolute; top: 5px; left: 0; right: calc(var(--sc-4) * -1); height: 1px; background: color-mix(in oklab, var(--sc-ink) 22%, transparent); }
+.route-line li:last-child::before { right: 0; display: none; }
+.route-line__dot { position: absolute; top: 0; left: 0; width: 11px; height: 11px; border-radius: 50%; background: var(--sc-canvas); border: 2px solid color-mix(in oklab, var(--sc-ink) 45%, transparent); z-index: 1; }
+.route-line li[data-goal] .route-line__dot { background: var(--sc-accent); border-color: var(--sc-accent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--sc-accent) 22%, transparent); }
+.route-line__k { font: 500 var(--sc-t-xs) var(--sc-font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--sc-ink-soft); }
+.route-line__v { font-size: var(--sc-t-sm); font-weight: 600; color: var(--sc-ink); line-height: 1.35; }
+.route-line li[data-goal] .route-line__v { color: var(--sc-accent); }
+@media (max-width: 760px) {
+  .route-line { grid-template-columns: 1fr; gap: 0; }
+  .route-line li { padding: 0 0 var(--sc-4) 1.6rem; }
+  .route-line li::before { top: 11px; bottom: 0; left: 5px; right: auto; width: 1px; height: auto; }
+  .route-line__dot { top: 3px; }
+}
 
 .two-col-list { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sc-6); }
 .two-col-list ul { padding-left: 1.1em; margin: 0; color: var(--sc-ink-soft); line-height: 1.55; }

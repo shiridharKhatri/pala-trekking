@@ -267,7 +267,7 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [], trac
     // Frame the stop in the space above the tour card, never under it.
     const narrow = m.getContainer().clientWidth < 600;
     const padding = narrow ? { top: 60, bottom: 190, left: 20, right: 20 } : { top: 70, bottom: 150, left: 60, right: 60 };
-    const cam = { center: [v.sp.lon, v.sp.lat] as [number, number], zoom: 13.6, pitch: 62, bearing, padding }; // z13+: OSM buildings show
+    const cam = { center: [v.sp.lon, v.sp.lat] as [number, number], zoom: 14.6, pitch: 62, bearing, padding }; // village scale: OSM buildings and named lodges show
     if (!animate) { m.jumpTo(cam); return; }
     m.flyTo({ ...cam, duration: 3200, essential: true });
     await new Promise<void>((res) => m.once("moveend", () => res()));
@@ -410,14 +410,6 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [], trac
         )}
       </div>
       {pins.map((p) => createPortal(<PinWeather sp={p.sp} night={p.nights[0]} />, p.slot, p.sp.id))}
-      <figcaption className="label">
-        {traced
-          ? <>Trail traced along OpenStreetMap footpaths between each night&apos;s stop{legs.some((l) => l.approx) ? "; dashed where the path isn't mapped" : ""}. Buildings, lodges <i className="tmap__key tmap__key--lodge" />, campsites <i className="tmap__key tmap__key--camp" /> and monasteries <i className="tmap__key tmap__key--gompa" /> from OpenStreetMap.</>
-          : <>Dashed line joins each night&apos;s stop in order; the exact trail is not traced yet.</>}
-        {(route.startOff.length > 0 || route.endOff.length > 0) && " Thin grey dashes: transfer to the gateway city."}
-        <span className="tmap__hint-mouse"> Drag to pan, Ctrl or ⌘ + scroll to zoom, right-drag to tilt.</span>
-        <span className="tmap__hint-touch"> Use two fingers to move, zoom and tilt.</span>
-      </figcaption>
     </figure>
   );
 }

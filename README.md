@@ -18,6 +18,18 @@ npm run dev                      # http://localhost:3000, admin at /admin
 are kept; add `--all` to clear those too). The first admin must change their
 password at first sign-in.
 
+### Trail lines on the trek map
+
+`node scripts/trace-trails.mjs` (or `node scripts/trace-trails.mjs <slug>`)
+traces each trek's walking route along OpenStreetMap footpaths between its
+overnight stops and stores it on the trek (`routeTrack`). It queries the public
+Overpass API with a bounding box only. A leg is drawn as trail only when it was
+traced; a stop more than 1.5 km from any mapped path, or a leg with no connected
+path, is stored as approximate and drawn dashed. Rerun it whenever an itinerary
+or a stay point's coordinates change; restart the server (or save the trek in
+the admin) so cached pages pick it up. Map data © OpenStreetMap contributors
+(ODbL), credited on the map.
+
 ## What is real and what is sample
 
 Everything the site shows comes from MongoDB. The seed is **sample data**:

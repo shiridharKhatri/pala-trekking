@@ -358,7 +358,7 @@ if (await empty("settings")) {
   await db.collection("settings").insertOne({
     _id: "site",
     currency: { base: "USD", enabled: ["USD", "EUR", "GBP", "NPR"], rates: { EUR: 0.92, GBP: 0.79, NPR: 134 }, ratesUpdatedAt: now, mode: "manual", sample: true },
-    previewNotice: true,
+    previewNotice: false,
   });
 }
 

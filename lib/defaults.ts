@@ -4,7 +4,7 @@ import type { SiteSettings } from "./types";
 // intentionally empty: they must come from Himalayan Yogini, not be invented.
 export const DEFAULT_SETTINGS: SiteSettings = {
   currency: { base: "USD", enabled: ["USD"], rates: {}, ratesUpdatedAt: null, mode: "manual" },
-  previewNotice: true,
+  previewNotice: false,
   weatherAttribution: "Weather data by Open-Meteo.com (CC BY 4.0)",
   company: { name: "Pala Trekking", tagline: "", email: "", phone: "", whatsapp: "", address: "", registration: "" },
   home: {
