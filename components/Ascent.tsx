@@ -7,6 +7,7 @@ import { describe, compass } from "@/lib/weather-codes";
 import { addDays, date, feet, km, metres, dateTime } from "@/lib/format";
 import { WeatherIcon } from "./WeatherIcon";
 import { emitDayHover, scrollToDay, useDayHover } from "@/lib/day-sync";
+import { setWeatherMode, setWeatherState, useWeatherState, type WxMode } from "@/lib/weather-sync";
 
 interface Props {
   itinerary: ItineraryDay[];
@@ -18,7 +19,7 @@ interface Props {
   loading?: boolean;
 }
 
-type Mode = { kind: "now" } | { kind: "departure"; start: string };
+type Mode = WxMode;
 
 /**
  * The ascent: day-by-day itinerary with a sticky elevation profile built from
@@ -39,7 +40,11 @@ export function Ascent({ itinerary, stayPoints, weather, weatherDisabled, depart
     () => matchMedia("(prefers-reduced-motion: reduce)").matches,
     () => false,
   );
-  const [mode, setMode] = useState<Mode>({ kind: "now" });
+  // Weather mode is shared with the 3D map, so both show the same conditions.
+  const { mode } = useWeatherState();
+  const setMode = setWeatherMode;
+  useEffect(() => { setWeatherMode({ kind: "now" }); }, []);
+  useEffect(() => { setWeatherState({ weather, disabled: weatherDisabled, loading }); }, [weather, weatherDisabled, loading]);
   // Day the visitor is pointing at (chart, list or route map), by day number.
   const [hoverDay, setHoverDay] = useState<number | null>(null);
   useDayHover("profile", setHoverDay);

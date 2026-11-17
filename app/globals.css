@@ -1077,3 +1077,45 @@ a.pager__btn:active { transform: translateY(1px); }
 @media (max-width: 860px) { .profile3d { --rx: 6; --ry: 0; } }
 @media (prefers-reduced-motion: reduce) { .profile3d .profile { transition: none; } .profile__face { transition: none; } }
 @media (max-width: 860px) { .profile-readout__o2 { display: none; } }
+
+/* ------------------------------------- 3D map: stop weather + fly the route ---- */
+.tmap__wx { position: absolute; top: calc(100% + 4px); left: 50%; translate: -50% 0; pointer-events: none; }
+.tmap__wxbadge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px 2px 3px; border-radius: 999px; background: color-mix(in oklab, var(--sc-canvas) 85%, transparent); border: 1px solid color-mix(in oklab, var(--sc-ink) 16%, transparent); color: var(--sc-ink); font: 600 10px var(--sc-font-mono); white-space: nowrap; backdrop-filter: blur(4px); animation: wx-badge-in 400ms var(--sc-ease-out) both; }
+@keyframes wx-badge-in { from { opacity: 0; transform: translateY(-4px) scale(0.85); } }
+.tmap__wxicon { width: 14px; height: 14px; color: var(--sc-ink); flex: none; }
+.tmap__select { appearance: none; padding-right: 0.9rem; max-width: 14rem; text-overflow: ellipsis; }
+.tmap__select option { background: var(--sc-surface); color: var(--sc-ink); }
+.tmap__play { position: absolute; left: 12px; right: 12px; bottom: 44px; z-index: 2; display: flex; justify-content: center; pointer-events: none; }
+.tmap__play > * { pointer-events: auto; }
+.tmap__fly { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.15rem; border-radius: 999px; border: 0; background: var(--sc-accent); color: #fff; font: 600 var(--sc-t-sm) var(--sc-font-text); cursor: pointer; box-shadow: 0 10px 30px -10px color-mix(in oklab, var(--sc-accent) 70%, #000); transition: transform 180ms var(--sc-ease-out); }
+.tmap__fly:hover { transform: translateY(-1px) scale(1.03); }
+.tmap__tour { display: flex; align-items: stretch; gap: 8px; max-width: min(34rem, 100%); padding: 8px; border-radius: var(--sc-r-lg); background: color-mix(in oklab, var(--sc-canvas) 86%, transparent); border: 1px solid color-mix(in oklab, var(--sc-ink) 16%, transparent); backdrop-filter: blur(10px); box-shadow: 0 18px 50px -20px #000; }
+.tmap__tourcard { display: grid; gap: 2px; padding: 4px 8px; min-width: 0; flex: 1; }
+.tmap__tourday { font: 600 10px var(--sc-font-mono); color: var(--sc-accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.tmap__tourcard strong { font-size: var(--sc-t-lg); line-height: 1.15; }
+.tmap__tourmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font: 500 11px var(--sc-font-mono); color: var(--sc-ink-soft); }
+.tmap__tourmeta small { font-size: 10px; }
+.tmap__tourbar { display: block; height: 3px; margin-top: 4px; border-radius: 2px; background: color-mix(in oklab, var(--sc-ink) 14%, transparent); overflow: hidden; }
+.tmap__tourbar i { display: block; height: 100%; background: var(--sc-accent); transform-origin: left; transition: transform 500ms var(--sc-ease-out); }
+.tmap__tourctl { display: flex; align-items: center; gap: 4px; }
+.tmap__tourctl button { width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 1px solid color-mix(in oklab, var(--sc-ink) 18%, transparent); background: none; color: var(--sc-ink); font-size: 14px; cursor: pointer; }
+.tmap__tourctl button:hover:not(:disabled) { border-color: var(--sc-accent); color: var(--sc-accent); }
+.tmap__tourctl button:disabled { opacity: 0.35; cursor: default; }
+@media (max-width: 600px) {
+  .tmap__play { bottom: 36px; left: 8px; right: 8px; }
+  .tmap__tour { flex-direction: column; width: 100%; }
+  .tmap__tourctl { justify-content: center; }
+  .tmap__select { max-width: 9.5rem; }
+}
+@media (prefers-reduced-motion: reduce) { .tmap__wxbadge { animation: none; } .tmap__fly, .tmap__tourbar i { transition: none; } }
+/* The weather slot is not a label: undo the marker-label styles for it. */
+.tmap__pin .tmap__wx, .tmap__pin .tmap__wxbadge { bottom: auto; padding: 0; border: 0; background: none; backdrop-filter: none; opacity: 1; transform: none; display: block; }
+.tmap__pin .tmap__wx { position: absolute; top: calc(100% + 6px); left: 50%; translate: -50% 0; }
+.tmap__pin .tmap__wxbadge { position: static; translate: none; display: inline-flex; padding: 2px 6px 2px 3px; border: 1px solid color-mix(in oklab, var(--sc-ink) 16%, transparent); background: color-mix(in oklab, var(--sc-canvas) 85%, transparent); backdrop-filter: blur(4px); }
+
+/* Overlays (tools, loader, tour) sit on the map area, never on the caption. */
+.tmap__stage { position: relative; }
+.tmap__stage .tmap__loading { inset: 0; height: auto; }
+.tmap:fullscreen .tmap__stage { height: 100vh; }
+.tmap__play { bottom: 40px; }
+@media (max-width: 600px) { .tmap__play { bottom: 32px; } }

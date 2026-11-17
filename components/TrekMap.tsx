@@ -1,10 +1,13 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef, useState } from "react";
-import type { Map as MlMap, Marker, LngLatBoundsLike } from "maplibre-gl";
-import type { ItineraryDay, StayPoint } from "@/lib/types";
-import { metres } from "@/lib/format";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
+import type { Map as MlMap, Marker, LngLatBoundsLike, GeoJSONSource } from "maplibre-gl";
+import type { ItineraryDay, PublicDeparture, StayPoint } from "@/lib/types";
+import { date, metres } from "@/lib/format";
+import { setWeatherMode, stopReading, useWeatherState } from "@/lib/weather-sync";
+import { WeatherIcon } from "./WeatherIcon";
 import { routeVisits } from "@/lib/route-visits";
 import { darkTerrainStyle } from "@/lib/map-style";
 import { emitDayHover, scrollToDay, useDayHover } from "@/lib/day-sync";
@@ -12,6 +15,29 @@ import { RouteMap } from "./RouteMap";
 import { RidgeLoader } from "./Skeletons";
 
 type State = "idle" | "loading" | "ready" | "failed";
+type Pin = { sp: StayPoint; nights: number[]; slot: HTMLElement };
+type Tour = { i: number; playing: boolean };
+
+/** Compass bearing (degrees) from a to b, so the camera faces the way you walk. */
+const bearingTo = (a: StayPoint, b: StayPoint) => {
+  const r = Math.PI / 180;
+  const y = Math.sin((b.lon - a.lon) * r) * Math.cos(b.lat * r);
+  const x = Math.cos(a.lat * r) * Math.sin(b.lat * r) - Math.sin(a.lat * r) * Math.cos(b.lat * r) * Math.cos((b.lon - a.lon) * r);
+  return (Math.atan2(y, x) / r + 360) % 360;
+};
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Live or forecast weather for one stop, inside its map marker. */
+function PinWeather({ sp, night }: { sp: StayPoint; night: number }) {
+  const wx = stopReading(sp, night, useWeatherState());
+  if (!wx.ok) return null;
+  return (
+    <span className="tmap__wxbadge" title={`${wx.label}, ${wx.when === "now" ? "now (not a forecast)" : `forecast ${wx.when}`}`}>
+      <WeatherIcon kind={wx.icon} label={wx.label} className="tmap__wxicon" />
+      {wx.temp}
+    </span>
+  );
+}
 
 const hasWebGL = () => {
   try { return !!document.createElement("canvas").getContext("webgl2"); } catch { return false; }
@@ -23,14 +49,23 @@ const hasWebGL = () => {
  * Loaded only when the section nears the viewport; the SVG sketch stays as
  * the fallback (no WebGL, tiles blocked, or the map fails to start).
  */
-export function TrekMap({ itinerary, stayPoints, trekName }: { itinerary: ItineraryDay[]; stayPoints: StayPoint[]; trekName: string }) {
+export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { itinerary: ItineraryDay[]; stayPoints: StayPoint[]; trekName: string; departures?: PublicDeparture[] }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const markersRef = useRef<Map<number, { marker: Marker; el: HTMLElement }>>(new Map());
-  const homeRef = useRef<() => void>(() => {});
+  const homeRef = useRef<() => void>(() => { });
   const [state, setState] = useState<State>("idle");
   const [is3d, setIs3d] = useState(true);
   const [hoverDay, setHoverDay] = useState<number | null>(null);
+  const [pins, setPins] = useState<Pin[]>([]);
+  const [tour, setTour] = useState<Tour | null>(null);
+  const tourToken = useRef(0);
+  const reduce = useSyncExternalStore(
+    (cb) => { const mq = matchMedia("(prefers-reduced-motion: reduce)"); mq.addEventListener("change", cb); return () => mq.removeEventListener("change", cb); },
+    () => matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false,
+  );
+  const weather = useWeatherState();
   useDayHover("map3d", setHoverDay);
 
   const route = routeVisits(itinerary, stayPoints);
@@ -54,7 +89,7 @@ export function TrekMap({ itinerary, stayPoints, trekName }: { itinerary: Itiner
     const fail = () => {
       if (cancelled) return;
       cancelled = true;
-      try { map?.remove(); } catch {}
+      try { map?.remove(); } catch { }
       map = null;
       mapRef.current = null;
       setState("failed");
@@ -112,6 +147,7 @@ export function TrekMap({ itinerary, stayPoints, trekName }: { itinerary: Itiner
           // Markers: one per stop (rest nights merged), the highest as a summit.
           const highest = route.shown.reduce((a, b) => (b.sp.elevationM > a.sp.elevationM ? b : a));
           const seen = new Set<string>();
+          const pinList: Pin[] = [];
           route.shown.forEach((v) => {
             if (seen.has(v.sp.id)) return;
             seen.add(v.sp.id);
@@ -121,7 +157,7 @@ export function TrekMap({ itinerary, stayPoints, trekName }: { itinerary: Itiner
             el.className = "tmap__pin";
             if (v.sp.id === highest.sp.id) el.dataset.high = "true";
             el.setAttribute("aria-label", `${v.sp.name}, ${metres(v.sp.elevationM)}, night of day ${nights.join(", ")}. Show in itinerary`);
-            el.innerHTML = `<i></i><span><b></b><em></em></span>`;
+            el.innerHTML = `<i></i><span><b></b><em></em></span><span class="tmap__wx"></span>`;
             el.querySelector("b")!.textContent = v.sp.name;
             el.querySelector("em")!.textContent = `${metres(v.sp.elevationM)} · day ${nights.join(", ")}`;
             el.addEventListener("mouseenter", () => { setHoverDay(nights[0]); emitDayHover(nights[0], "map3d"); });
@@ -131,7 +167,16 @@ export function TrekMap({ itinerary, stayPoints, trekName }: { itinerary: Itiner
             el.addEventListener("click", () => scrollToDay(nights[0]));
             const marker = new ml.Marker({ element: el, anchor: "bottom" }).setLngLat([v.sp.lon, v.sp.lat]).addTo(m);
             nights.forEach((d) => markers.set(d, { marker, el }));
+            pinList.push({ sp: v.sp, nights, slot: el.querySelector<HTMLElement>(".tmap__wx")! });
           });
+          setPins(pinList);
+          // The walked part of the route, lit up during the fly-through.
+          m.addSource("walked", { type: "geojson", data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } } });
+          m.addLayer({ id: "walked", type: "line", source: "walked", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffb39e", "line-width": 5, "line-opacity": 0.95 } });
+          // Any manual drag or zoom pauses the tour.
+          const pause = () => { tourToken.current++; setTour((t) => (t ? { ...t, playing: false } : t)); };
+          m.on("dragstart", pause);
+          m.on("wheel", pause);
 
           const home = (animate: boolean) => {
             const cam = m.cameraForBounds(bounds, { padding: { top: 70, bottom: 50, left: 50, right: 70 } });
@@ -145,14 +190,18 @@ export function TrekMap({ itinerary, stayPoints, trekName }: { itinerary: Itiner
           if (reduce) { home(false); return; }
           // Cinematic entrance: tilt into the terrain while the route draws.
           home(true);
-          const t0 = performance.now(), dur = 2400;
+          let t0: number | null = null;
+          const dur = 2400;
           const total = pts.length - 1;
           const step = (t: number) => {
             if (cancelled) return;
-            const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 2);
+            if (t0 === null) t0 = t;
+            const k = Math.min(1, Math.max(0, (t - t0) / dur)), e = 1 - Math.pow(1 - k, 2);
             const f = e * total, i = Math.floor(f), r = f - i;
             const coords = pts.slice(0, i + 1);
-            if (i < total) coords.push([pts[i][0] + (pts[i + 1][0] - pts[i][0]) * r, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * r]);
+            if (i < total && pts[i] && pts[i + 1]) {
+              coords.push([pts[i][0] + (pts[i + 1][0] - pts[i][0]) * r, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * r]);
+            }
             (m.getSource("route") as import("maplibre-gl").GeoJSONSource | undefined)?.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } });
             if (k < 1) requestAnimationFrame(step);
           };
@@ -187,6 +236,56 @@ export function TrekMap({ itinerary, stayPoints, trekName }: { itinerary: Itiner
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usable]);
 
+  // ---- Fly the route ------------------------------------------------------
+  // One step per night stop (rest nights merged), in itinerary order.
+  const stops = route.shown;
+  const showStop = async (i: number, animate: boolean) => {
+    const m = mapRef.current;
+    if (!m) return;
+    const v = stops[i];
+    const prev = stops[Math.max(0, i - 1)];
+    const bearing = i > 0 && (prev.sp.lon !== v.sp.lon || prev.sp.lat !== v.sp.lat) ? bearingTo(prev.sp, v.sp) : m.getBearing();
+    (m.getSource("walked") as GeoJSONSource | undefined)?.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: stops.slice(0, i + 1).map((s) => [s.sp.lon, s.sp.lat]) } });
+    setHoverDay(v.days[0]);
+    emitDayHover(v.days[0], "map3d");
+    const cam = { center: [v.sp.lon, v.sp.lat] as [number, number], zoom: 12.4, pitch: 64, bearing };
+    if (!animate) { m.jumpTo(cam); return; }
+    m.flyTo({ ...cam, duration: 3200, essential: true });
+    await new Promise<void>((res) => m.once("moveend", () => res()));
+  };
+  const play = async (from: number) => {
+    const token = ++tourToken.current;
+    for (let i = from; i < stops.length; i++) {
+      if (tourToken.current !== token) return;
+      setTour({ i, playing: true });
+      await showStop(i, true);
+      if (tourToken.current !== token) return;
+      await sleep(1800);
+    }
+    if (tourToken.current === token) setTour({ i: stops.length - 1, playing: false });
+  };
+  const startTour = () => {
+    if (reduce) { setTour({ i: 0, playing: false }); showStop(0, false); return; }
+    play(tour && tour.i < stops.length - 1 ? tour.i : 0);
+  };
+  const pauseTour = () => { tourToken.current++; setTour((t) => (t ? { ...t, playing: false } : t)); };
+  const stepTour = (d: number) => {
+    tourToken.current++;
+    const i = Math.min(stops.length - 1, Math.max(0, (tour?.i ?? -1) + d));
+    setTour({ i, playing: false });
+    showStop(i, !reduce);
+  };
+  const endTour = () => {
+    tourToken.current++;
+    setTour(null);
+    setHoverDay(null);
+    emitDayHover(null, "map3d");
+    (mapRef.current?.getSource("walked") as GeoJSONSource | undefined)?.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } });
+    homeRef.current();
+  };
+  const cur = tour ? stops[tour.i] : null;
+  const curWx = cur ? stopReading(cur.sp, cur.days[0], weather) : null;
+
   const toggle3d = () => {
     const m = mapRef.current;
     if (!m) return;
@@ -203,14 +302,58 @@ export function TrekMap({ itinerary, stayPoints, trekName }: { itinerary: Itiner
 
   return (
     <figure className="tmap" ref={boxRef} data-state={state}>
+      <div className="tmap__stage">
       <div className="tmap__canvas" role="region" aria-label={`Interactive 3D map of the ${trekName} route. Use the buttons on each stop to jump to its day.`} />
       {state !== "ready" && (
         <div className="tmap__loading"><RidgeLoader label="Loading terrain" /></div>
       )}
       <div className="tmap__tools">
         <button type="button" className="tmap__btn" onClick={toggle3d} aria-pressed={is3d} disabled={state !== "ready"}>{is3d ? "3D" : "2D"}</button>
-        <button type="button" className="tmap__btn" onClick={() => homeRef.current()} disabled={state !== "ready"}>Reset view</button>
+        <button type="button" className="tmap__btn" onClick={() => (tour ? endTour() : homeRef.current())} disabled={state !== "ready"}>Reset view</button>
+        {departures.length > 0 && (
+          <select
+            className="tmap__btn tmap__select"
+            aria-label="Weather on the map"
+            value={weather.mode.kind === "now" ? "" : weather.mode.start}
+            onChange={(e) => setWeatherMode(e.target.value ? { kind: "departure", start: e.target.value } : { kind: "now" })}
+            disabled={state !== "ready"}
+          >
+            <option value="">Weather now</option>
+            {departures.map((d) => <option key={d.id} value={d.startDate}>Forecast: {date(d.startDate, { year: undefined })} departure</option>)}
+          </select>
+        )}
       </div>
+      {state === "ready" && (
+        <div className="tmap__play">
+          {!tour ? (
+            <button type="button" className="tmap__fly" onClick={startTour}>
+              <span aria-hidden="true">▶</span> {reduce ? "Step through the route" : "Fly the route"}
+            </button>
+          ) : (
+            <div className="tmap__tour" role="group" aria-label="Route tour">
+              <div className="tmap__tourcard" aria-live="polite">
+                <span className="tmap__tourday">Day {cur!.days.join("–")} · {tour.i + 1}/{stops.length}</span>
+                <strong>{cur!.sp.name}</strong>
+                <span className="tmap__tourmeta">
+                  {metres(cur!.sp.elevationM)}
+                  {curWx?.ok ? <> · <WeatherIcon kind={curWx.icon} label={curWx.label} className="tmap__wxicon" /> {curWx.temp} {curWx.label.toLowerCase()} <small>({curWx.when === "now" ? "now, not a forecast" : `forecast ${curWx.when}`})</small></> : curWx ? <> · <small>{curWx.reason}</small></> : null}
+                </span>
+                <span className="tmap__tourbar" aria-hidden="true"><i style={{ transform: `scaleX(${(tour.i + 1) / stops.length})` }} /></span>
+              </div>
+              <div className="tmap__tourctl">
+                <button type="button" onClick={() => stepTour(-1)} disabled={tour.i === 0} aria-label="Previous stop">‹</button>
+                {!reduce && (tour.playing
+                  ? <button type="button" onClick={pauseTour} aria-label="Pause">❚❚</button>
+                  : <button type="button" onClick={startTour} aria-label="Play" disabled={tour.i === stops.length - 1}>▶</button>)}
+                <button type="button" onClick={() => stepTour(1)} disabled={tour.i === stops.length - 1} aria-label="Next stop">›</button>
+                <button type="button" onClick={endTour} aria-label="End tour">✕</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      </div>
+      {pins.map((p) => createPortal(<PinWeather sp={p.sp} night={p.nights[0]} />, p.slot, p.sp.id))}
       <figcaption className="label">
         Real terrain, the line joins each night&apos;s stop in order (not the exact trail).
         {(route.startOff.length > 0 || route.endOff.length > 0) && " Dashed: transfer to the gateway city."}

@@ -196,7 +196,7 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
             <p className="lede" style={{ marginTop: "0.5rem" }}>Each night&apos;s stop on the real terrain. Point at one to find its day.</p>
           </div>
         </div>
-        <TrekMap itinerary={trek.itinerary} stayPoints={stayPoints} trekName={trek.name} />
+        <TrekMap itinerary={trek.itinerary} stayPoints={stayPoints} trekName={trek.name} departures={departures} />
       </section>
 
       <section className="wrap section" aria-labelledby="itinerary-title">
