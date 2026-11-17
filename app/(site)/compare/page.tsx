@@ -8,6 +8,7 @@ import { CompareSync } from "@/components/CompareSync";
 import { difficultyLabel, feet, gatewayLabel, metres } from "@/lib/format";
 import { CompareSkeleton } from "@/components/Skeletons";
 import { ProfileOverlay } from "@/components/ProfileOverlay";
+import { CompareLimit } from "@/components/CompareLimit";
 
 export const metadata: Metadata = {
   title: "Compare treks",
@@ -72,6 +73,7 @@ async function Comparison({ searchParams }: { searchParams: Promise<SP> }) {
               <label key={t.id}><input type="checkbox" name="treks" value={t.slug} defaultChecked={slugs.includes(t.slug)} /><span>{t.name}</span></label>
             ))}
           </div>
+          <CompareLimit />
         </fieldset>
         <div><button className="btn btn--small" type="submit">Update comparison</button></div>
       </form>

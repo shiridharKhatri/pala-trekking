@@ -29,7 +29,7 @@ function subscribe(cb: () => void) {
   addEventListener("storage", cb);
   return () => { listeners.delete(cb); removeEventListener("storage", cb); };
 }
-function useCompareList() {
+export function useCompareList() {
   return useSyncExternalStore(subscribe, readList, () => EMPTY);
 }
 
