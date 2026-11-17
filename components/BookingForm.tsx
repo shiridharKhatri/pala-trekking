@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { submitBooking, type FormState } from "@/lib/actions/public";
 import type { Experience, PublicDeparture } from "@/lib/types";
 import { addDays, convert, date, money } from "@/lib/format";
@@ -83,7 +83,17 @@ export function BookingForm({ trek, departures, experiences, countries, initialD
   ];
 
   return (
-    <form ref={formRef} action={action} className="booking" noValidate={false} onChange={checkProgress} onInput={checkProgress}>
+    <form
+      ref={formRef}
+      action={action}
+      className="booking"
+      onChange={checkProgress}
+      onInput={checkProgress}
+      // Submit through a transition ourselves: React then keeps what the
+      // visitor typed when the server sends errors back (a plain form action
+      // resets every field). Without JavaScript the action prop still works.
+      onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); startTransition(() => action(fd)); }}
+    >
       <input type="hidden" name="trekSlug" value={trek.slug} />
       <input type="hidden" name="displayCurrency" value={selected} />
       <div aria-hidden="true" style={{ position: "absolute", left: "-9999px" }}>
@@ -185,9 +195,9 @@ export function BookingForm({ trek, departures, experiences, countries, initialD
         <fieldset className="step">
           <legend><span>03</span> Your details</legend>
           <div className="grid-2">
-            <label className="field"><span>Lead traveller full name</span><input className="input" name="name" autoComplete="name" required {...invalid("name")} />{errEl("name")}</label>
-            <label className="field"><span>Email</span><input className="input" type="email" name="email" autoComplete="email" required {...invalid("email")} />{errEl("email")}</label>
-            <label className="field"><span>Phone, with country code</span><input className="input" type="tel" name="phone" autoComplete="tel" placeholder="+44 20 7946 0000" required {...invalid("phone")} />{errEl("phone")}</label>
+            <label className="field"><span>Lead traveller full name</span><input className="input" name="name" autoComplete="name" required minLength={2} maxLength={120} {...invalid("name")} />{errEl("name")}</label>
+            <label className="field"><span>Email</span><input className="input" type="email" name="email" autoComplete="email" required maxLength={200} {...invalid("email")} />{errEl("email")}</label>
+            <label className="field"><span>Phone, with country code</span><input className="input" type="tel" name="phone" autoComplete="tel" placeholder="+44 20 7946 0000" required pattern="\+?[0-9 \(\)\-\.]{6,22}" title="Phone number with country code, for example +44 20 7946 0000" {...invalid("phone")} />{errEl("phone")}</label>
             <label className="field"><span>Country of residence</span>
               <select className="input" name="country" autoComplete="country" defaultValue="" required {...invalid("country")}>
                 <option value="" disabled>Select a country</option>
@@ -195,8 +205,8 @@ export function BookingForm({ trek, departures, experiences, countries, initialD
               </select>{errEl("country")}
             </label>
           </div>
-          <label className="field"><span>Other travellers&apos; names (optional)</span><textarea className="input" name="travellerNames" rows={2} /></label>
-          <label className="field"><span>Anything we should know (optional)</span><textarea className="input" name="message" rows={3} placeholder="Dietary needs, previous altitude experience, questions" /></label>
+          <label className="field"><span>Other travellers&apos; names (optional)</span><textarea className="input" name="travellerNames" rows={2} maxLength={1000} /></label>
+          <label className="field"><span>Anything we should know (optional)</span><textarea className="input" name="message" rows={3} maxLength={3000} placeholder="Dietary needs, previous altitude experience, questions" /></label>
         </fieldset>
 
         <fieldset className="step">

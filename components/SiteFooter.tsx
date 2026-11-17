@@ -1,5 +1,14 @@
 import Link from "next/link";
 import type { SiteSettings } from "@/lib/types";
+import { cacheLife } from "next/cache";
+import { Mark } from "./SiteHeader";
+
+/** Current year, cached for a day so the footer can stay prerendered. */
+async function CopyrightYear() {
+  "use cache";
+  cacheLife("days");
+  return <>{new Date().getFullYear()}</>;
+}
 
 export function SiteFooter({ settings }: { settings: SiteSettings }) {
   const c = settings.company;
@@ -8,7 +17,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
       <div className="wrap">
         <div className="site-footer__grid">
           <div>
-            <p className="wordmark" style={{ marginBottom: "0.75rem" }}>Pala Trekking</p>
+            <p className="wordmark" style={{ marginBottom: "0.75rem" }}><Mark />Pala Trekking</p>
             {c.tagline && <p>{c.tagline}</p>}
             {c.address && <p>{c.address}</p>}
             {c.email && <p><a href={`mailto:${c.email}`}>{c.email}</a></p>}
@@ -47,8 +56,8 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
           </div>
         </div>
         <div className="site-footer__base">
-          <span>Prices are set in {settings.currency.base}. Other currencies are estimates.</span>
-          <span>{settings.weatherAttribution}</span>
+          <span>© <CopyrightYear /> {c.name || "Pala Trekking"}. All rights reserved.</span>
+          <span><Link href="/terms">Terms</Link> · <Link href="/privacy">Privacy</Link> · <Link href="/credits">Photo credits</Link></span>
         </div>
       </div>
     </footer>

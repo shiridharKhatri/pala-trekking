@@ -1271,3 +1271,6 @@ a.pager__btn:active { transform: translateY(1px); }
 .compare-limit[data-full] { color: var(--sc-accent); }
 /* Medium widths: the Treks menu already covers "Find a trek". */
 @media (max-width: 1180px) and (min-width: 861px) { .header-tools .btn { display: none; } }
+.site-footer__base { color: var(--sc-ink-soft); }
+.site-footer__base a { color: inherit; text-decoration: none; }
+.site-footer__base a:hover { color: var(--sc-ink); }
