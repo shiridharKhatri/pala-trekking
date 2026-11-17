@@ -1085,29 +1085,8 @@ a.pager__btn:active { transform: translateY(1px); }
 .tmap__wxicon { width: 14px; height: 14px; color: var(--sc-ink); flex: none; }
 .tmap__select { appearance: none; padding-right: 0.9rem; max-width: 14rem; text-overflow: ellipsis; }
 .tmap__select option { background: var(--sc-surface); color: var(--sc-ink); }
-.tmap__play { position: absolute; left: 12px; right: 12px; bottom: 44px; z-index: 2; display: flex; justify-content: center; pointer-events: none; }
-.tmap__play > * { pointer-events: auto; }
-.tmap__fly { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.15rem; border-radius: 999px; border: 0; background: var(--sc-accent); color: #fff; font: 600 var(--sc-t-sm) var(--sc-font-text); cursor: pointer; box-shadow: 0 10px 30px -10px color-mix(in oklab, var(--sc-accent) 70%, #000); transition: transform 180ms var(--sc-ease-out); }
-.tmap__fly:hover { transform: translateY(-1px) scale(1.03); }
-.tmap__tour { display: flex; align-items: stretch; gap: 8px; max-width: min(34rem, 100%); padding: 8px; border-radius: var(--sc-r-lg); background: color-mix(in oklab, var(--sc-canvas) 86%, transparent); border: 1px solid color-mix(in oklab, var(--sc-ink) 16%, transparent); backdrop-filter: blur(10px); box-shadow: 0 18px 50px -20px #000; }
-.tmap__tourcard { display: grid; gap: 2px; padding: 4px 8px; min-width: 0; flex: 1; }
-.tmap__tourday { font: 600 10px var(--sc-font-mono); color: var(--sc-accent); text-transform: uppercase; letter-spacing: 0.06em; }
-.tmap__tourcard strong { font-size: var(--sc-t-lg); line-height: 1.15; }
-.tmap__tourmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font: 500 11px var(--sc-font-mono); color: var(--sc-ink-soft); }
-.tmap__tourmeta small { font-size: 10px; }
-.tmap__tourbar { display: block; height: 3px; margin-top: 4px; border-radius: 2px; background: color-mix(in oklab, var(--sc-ink) 14%, transparent); overflow: hidden; }
-.tmap__tourbar i { display: block; height: 100%; background: var(--sc-accent); transform-origin: left; transition: transform 500ms var(--sc-ease-out); }
-.tmap__tourctl { display: flex; align-items: center; gap: 4px; }
-.tmap__tourctl button { width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 1px solid color-mix(in oklab, var(--sc-ink) 18%, transparent); background: none; color: var(--sc-ink); font-size: 14px; cursor: pointer; }
-.tmap__tourctl button:hover:not(:disabled) { border-color: var(--sc-accent); color: var(--sc-accent); }
-.tmap__tourctl button:disabled { opacity: 0.35; cursor: default; }
-@media (max-width: 600px) {
-  .tmap__play { bottom: 36px; left: 8px; right: 8px; }
-  .tmap__tour { flex-direction: column; width: 100%; }
-  .tmap__tourctl { justify-content: center; }
-  .tmap__select { max-width: 9.5rem; }
-}
-@media (prefers-reduced-motion: reduce) { .tmap__wxbadge { animation: none; } .tmap__fly, .tmap__tourbar i { transition: none; } }
+@media (max-width: 600px) { .tmap__select { max-width: 9.5rem; } }
+@media (prefers-reduced-motion: reduce) { .tmap__wxbadge { animation: none; } }
 /* The weather slot is not a label: undo the marker-label styles for it. */
 .tmap__pin .tmap__wx, .tmap__pin .tmap__wxbadge { bottom: auto; padding: 0; border: 0; background: none; backdrop-filter: none; opacity: 1; transform: none; display: block; }
 .tmap__pin .tmap__wx { position: absolute; top: calc(100% + 6px); left: 50%; translate: -50% 0; }
@@ -1117,5 +1096,40 @@ a.pager__btn:active { transform: translateY(1px); }
 .tmap__stage { position: relative; }
 .tmap__stage .tmap__loading { inset: 0; height: auto; }
 .tmap:fullscreen .tmap__stage { height: 100vh; }
-.tmap__play { bottom: 40px; }
-@media (max-width: 600px) { .tmap__play { bottom: 32px; } }
+
+/* ------------------------------------------------ fly the route: tour card ---- */
+/* Bottom-left of the map, clear of the attribution; the camera frames the stop
+   in the space above it, so the card never hides what it describes. */
+.tmap__play { position: absolute; left: 12px; bottom: 12px; z-index: 3; }
+.tmap__fly { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.05rem; border-radius: 999px; border: 0; background: var(--sc-accent); color: #fff; font: 600 var(--sc-t-sm) var(--sc-font-text); cursor: pointer; box-shadow: 0 10px 30px -12px color-mix(in oklab, var(--sc-accent) 70%, #000); transition: transform 180ms var(--sc-ease-out); }
+.tmap__fly:hover { transform: translateY(-1px); }
+.tmap__tour { width: 18.5rem; display: grid; gap: 0.35rem; padding: 0.8rem 0.9rem 0.7rem; border-radius: var(--sc-r-lg); background: color-mix(in oklab, var(--sc-canvas) 88%, transparent); border: 1px solid color-mix(in oklab, var(--sc-ink) 14%, transparent); backdrop-filter: blur(10px); box-shadow: 0 18px 48px -22px #000; animation: tour-in 320ms var(--sc-ease-out) both; }
+@keyframes tour-in { from { opacity: 0; transform: translateY(8px); } }
+.tmap__tourhead { display: flex; justify-content: space-between; align-items: center; }
+.tmap__tourday { font: 600 10.5px var(--sc-font-mono); color: var(--sc-accent); text-transform: uppercase; letter-spacing: 0.08em; }
+.tmap__tourclose { width: 1.6rem; height: 1.6rem; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--sc-ink-soft); font-size: 12px; cursor: pointer; }
+.tmap__tourclose:hover { background: color-mix(in oklab, var(--sc-ink) 10%, transparent); color: var(--sc-ink); }
+.tmap__tourname { display: block; font-size: var(--sc-t-lg); font-weight: 600; line-height: 1.15; }
+.tmap__tourmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem; margin-top: 0.2rem; font: 500 11.5px var(--sc-font-mono); color: var(--sc-ink-soft); }
+.tmap__tourwx { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--sc-ink); }
+.tmap__tourwx em { font-style: normal; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 999px; border: 1px solid color-mix(in oklab, var(--sc-ink) 18%, transparent); color: var(--sc-ink-soft); }
+.tmap__tourmuted { font-size: 10.5px; }
+.tmap__tourfoot { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.35rem; }
+.tmap__dots { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; flex-wrap: wrap; min-width: 0; }
+.tmap__dots button { width: 9px; height: 9px; padding: 0; border-radius: 50%; border: 1.5px solid color-mix(in oklab, var(--sc-ink) 30%, transparent); background: none; cursor: pointer; transition: transform 160ms var(--sc-ease-out), background 160ms var(--sc-ease-out); }
+.tmap__dots button[data-state="done"] { background: color-mix(in oklab, var(--sc-accent) 55%, transparent); border-color: transparent; }
+.tmap__dots button[data-state="here"] { background: var(--sc-accent); border-color: var(--sc-accent); transform: scale(1.3); }
+.tmap__dots button:hover { border-color: var(--sc-ink); }
+.tmap__tourctl { display: flex; align-items: center; gap: 2px; flex: none; }
+.tmap__tourctl button { width: 2rem; height: 2rem; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--sc-ink); font-size: 16px; cursor: pointer; }
+.tmap__tourctl button:hover { background: color-mix(in oklab, var(--sc-ink) 10%, transparent); }
+.tmap__tourctl button[data-hidden] { visibility: hidden; }
+.tmap__tourctl .tmap__tourmain { width: 2.3rem; height: 2.3rem; background: var(--sc-accent); color: #fff; font-size: 12px; }
+.tmap__tourctl .tmap__tourmain:hover { background: color-mix(in oklab, var(--sc-accent) 85%, #fff); }
+/* While touring, the card names the stop: hide the marker's own label box. */
+.tmap[data-touring] .tmap__pin[data-active="true"] > span:not(.tmap__wx) { opacity: 0; }
+@media (max-width: 600px) {
+  .tmap__play { left: 8px; right: 8px; bottom: 34px; }
+  .tmap__tour { width: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .tmap__tour { animation: none; } .tmap__fly, .tmap__dots button { transition: none; } }

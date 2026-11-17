@@ -248,7 +248,10 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
     (m.getSource("walked") as GeoJSONSource | undefined)?.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: stops.slice(0, i + 1).map((s) => [s.sp.lon, s.sp.lat]) } });
     setHoverDay(v.days[0]);
     emitDayHover(v.days[0], "map3d");
-    const cam = { center: [v.sp.lon, v.sp.lat] as [number, number], zoom: 12.4, pitch: 64, bearing };
+    // Frame the stop in the space above the tour card, never under it.
+    const narrow = m.getContainer().clientWidth < 600;
+    const padding = narrow ? { top: 60, bottom: 190, left: 20, right: 20 } : { top: 70, bottom: 150, left: 60, right: 60 };
+    const cam = { center: [v.sp.lon, v.sp.lat] as [number, number], zoom: 12.4, pitch: 62, bearing, padding };
     if (!animate) { m.jumpTo(cam); return; }
     m.flyTo({ ...cam, duration: 3200, essential: true });
     await new Promise<void>((res) => m.once("moveend", () => res()));
@@ -275,6 +278,12 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
     setTour({ i, playing: false });
     showStop(i, !reduce);
   };
+  const goTo = (i: number) => {
+    tourToken.current++;
+    setTour({ i, playing: false });
+    showStop(i, !reduce);
+  };
+  const replay = () => (reduce ? goTo(0) : play(0));
   const endTour = () => {
     tourToken.current++;
     setTour(null);
@@ -301,7 +310,7 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
   if (state === "failed") return <RouteMap itinerary={itinerary} stayPoints={stayPoints} />;
 
   return (
-    <figure className="tmap" ref={boxRef} data-state={state}>
+    <figure className="tmap" ref={boxRef} data-state={state} data-touring={tour ? "" : undefined}>
       <div className="tmap__stage">
       <div className="tmap__canvas" role="region" aria-label={`Interactive 3D map of the ${trekName} route. Use the buttons on each stop to jump to its day.`} />
       {state !== "ready" && (
@@ -331,22 +340,50 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
             </button>
           ) : (
             <div className="tmap__tour" role="group" aria-label="Route tour">
-              <div className="tmap__tourcard" aria-live="polite">
-                <span className="tmap__tourday">Day {cur!.days.join("–")} · {tour.i + 1}/{stops.length}</span>
-                <strong>{cur!.sp.name}</strong>
-                <span className="tmap__tourmeta">
-                  {metres(cur!.sp.elevationM)}
-                  {curWx?.ok ? <> · <WeatherIcon kind={curWx.icon} label={curWx.label} className="tmap__wxicon" /> {curWx.temp} {curWx.label.toLowerCase()} <small>({curWx.when === "now" ? "now, not a forecast" : `forecast ${curWx.when}`})</small></> : curWx ? <> · <small>{curWx.reason}</small></> : null}
-                </span>
-                <span className="tmap__tourbar" aria-hidden="true"><i style={{ transform: `scaleX(${(tour.i + 1) / stops.length})` }} /></span>
+              <div className="tmap__tourhead">
+                <span className="tmap__tourday">Day {cur!.days.join("–")}</span>
+                <button type="button" className="tmap__tourclose" onClick={endTour} aria-label="End tour">✕</button>
               </div>
-              <div className="tmap__tourctl">
-                <button type="button" onClick={() => stepTour(-1)} disabled={tour.i === 0} aria-label="Previous stop">‹</button>
-                {!reduce && (tour.playing
-                  ? <button type="button" onClick={pauseTour} aria-label="Pause">❚❚</button>
-                  : <button type="button" onClick={startTour} aria-label="Play" disabled={tour.i === stops.length - 1}>▶</button>)}
-                <button type="button" onClick={() => stepTour(1)} disabled={tour.i === stops.length - 1} aria-label="Next stop">›</button>
-                <button type="button" onClick={endTour} aria-label="End tour">✕</button>
+              <div aria-live="polite">
+                <strong className="tmap__tourname">{cur!.sp.name}</strong>
+                <span className="tmap__tourmeta">
+                  <span>{metres(cur!.sp.elevationM)}</span>
+                  {curWx?.ok && (
+                    <span className="tmap__tourwx" title={curWx.when === "now" ? "Current conditions, not a forecast for your dates" : `Forecast for ${curWx.when}`}>
+                      <WeatherIcon kind={curWx.icon} label={curWx.label} className="tmap__wxicon" />
+                      {curWx.temp} {curWx.label.toLowerCase()}
+                      <em>{curWx.when === "now" ? "now" : curWx.when}</em>
+                    </span>
+                  )}
+                  {curWx && !curWx.ok && <span className="tmap__tourmuted">{curWx.reason}</span>}
+                </span>
+              </div>
+              <div className="tmap__tourfoot">
+                <ol className="tmap__dots" aria-label="Stops">
+                  {stops.map((s, i) => (
+                    <li key={i}>
+                      <button
+                        type="button"
+                        data-state={i < tour.i ? "done" : i === tour.i ? "here" : undefined}
+                        aria-current={i === tour.i ? "step" : undefined}
+                        aria-label={`Day ${s.days.join("–")}: ${s.sp.name}`}
+                        title={s.sp.name}
+                        onClick={() => goTo(i)}
+                      />
+                    </li>
+                  ))}
+                </ol>
+                <div className="tmap__tourctl">
+                  <button type="button" onClick={() => stepTour(-1)} aria-label="Previous stop" data-hidden={tour.i === 0 || undefined}>‹</button>
+                  {tour.i === stops.length - 1 && !tour.playing ? (
+                    <button type="button" className="tmap__tourmain" onClick={replay} aria-label="Replay the route">↺</button>
+                  ) : !reduce ? (
+                    tour.playing
+                      ? <button type="button" className="tmap__tourmain" onClick={pauseTour} aria-label="Pause">❚❚</button>
+                      : <button type="button" className="tmap__tourmain" onClick={startTour} aria-label="Play">▶</button>
+                  ) : null}
+                  <button type="button" onClick={() => stepTour(1)} aria-label="Next stop" data-hidden={tour.i === stops.length - 1 || undefined}>›</button>
+                </div>
               </div>
             </div>
           )}
