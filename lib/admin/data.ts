@@ -35,6 +35,7 @@ export async function loadOptions(fields: Field[]): Promise<Options> {
   if (need.has("regions")) out.regions = (await database.collection(C.regions).find().sort({ order: 1 }).toArray()).map((r) => ({ value: r._id.toHexString(), label: `${r.name}${r.status !== "published" ? ` (${r.status})` : ""}` }));
   if (need.has("treks")) out.treks = (await database.collection(C.treks).find({}, { projection: { name: 1, status: 1 } }).sort({ name: 1 }).toArray()).map((t) => ({ value: t._id.toHexString(), label: `${t.name}${t.status !== "published" ? ` (${t.status})` : ""}` }));
   if (need.has("stayPoints")) out.stayPoints = (await database.collection(C.stayPoints).find().sort({ name: 1 }).toArray()).map((s) => ({ value: s._id.toHexString(), label: `${s.name} (${s.elevationM} m)` }));
+  if (need.has("guides")) out.guides = (await database.collection(C.guides).find({}, { projection: { name: 1, status: 1 } }).sort({ name: 1 }).toArray()).map((g) => ({ value: g._id.toHexString(), label: `${g.name}${g.status !== "published" ? ` (${g.status})` : ""}` }));
   if (need.has("currencies")) out.currencies = CURRENCY_CODES.map((c) => ({ value: c, label: c }));
   return out;
 }

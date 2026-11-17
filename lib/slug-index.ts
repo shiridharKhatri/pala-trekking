@@ -10,7 +10,7 @@
 
 import { MongoClient } from "mongodb";
 
-type Kind = "treks" | "gateways" | "experiences";
+type Kind = "treks" | "gateways" | "experiences" | "guides" | "blog";
 const TTL_MS = 30_000; // normal refresh
 const MISS_REFRESH_MS = 5_000; // at most one forced refresh per 5 s on unknown slugs
 const FAIL_BACKOFF_MS = 30_000; // after a database failure, stop checking for 30 s
@@ -20,6 +20,8 @@ const state: Record<Kind, { slugs: Set<string>; at: number; forcedAt: number; lo
   treks: { slugs: new Set(), at: 0, forcedAt: 0, loading: null },
   gateways: { slugs: new Set(), at: 0, forcedAt: 0, loading: null },
   experiences: { slugs: new Set(), at: 0, forcedAt: 0, loading: null },
+  guides: { slugs: new Set(), at: 0, forcedAt: 0, loading: null },
+  blog: { slugs: new Set(), at: 0, forcedAt: 0, loading: null },
 };
 
 declare global {
@@ -38,8 +40,10 @@ function client(): Promise<MongoClient> {
 
 async function load(kind: Kind) {
   const db = (await client()).db(process.env.MONGODB_DB ?? "palatrek");
-  const filter = kind === "gateways" ? {} : { status: "published" };
-  const rows = await db.collection(kind).find(filter, { projection: { slug: 1 } }).toArray();
+  // Same visibility rules as the public pages (guides also need consent).
+  const filter = kind === "gateways" ? {} : kind === "guides" ? { status: "published", consent: true } : { status: "published" };
+  const collection = kind === "blog" ? "posts" : kind;
+  const rows = await db.collection(collection).find(filter, { projection: { slug: 1 } }).toArray();
   state[kind].slugs = new Set(rows.map((r) => String(r.slug)));
   state[kind].at = Date.now();
 }

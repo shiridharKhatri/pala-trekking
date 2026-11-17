@@ -5,9 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { connection } from "next/server";
 import {
-  getActiveAdvisories, getExperiencesForTrek, getPublicDepartures, getPublishedSlugs, getRegions,
+  getActiveAdvisories, getExperiencesForTrek, getGuidesForTrek, getPostsForTrek, getPublicDepartures, getPublishedSlugs, getRegions,
   getSettings, getStayPoints, getTrekBySlug,
 } from "@/lib/data/public";
+import { GuideCard } from "@/components/GuideCard";
+import { PostCard } from "@/components/PostCard";
 import { getRouteWeather } from "@/lib/weather";
 import { ScrollStage } from "@/components/ScrollStage";
 import { Ascent } from "@/components/Ascent";
@@ -52,8 +54,8 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
   if (!trek) notFound();
 
   const stayIds = [...new Set(trek.itinerary.map((d) => d.stayPointId).filter(Boolean) as string[])];
-  const [settings, regions, stayPoints, experiences, allDepartures, advisories] = await Promise.all([
-    getSettings(), getRegions(), getStayPoints(stayIds), getExperiencesForTrek(trek.id), getPublicDepartures(), getActiveAdvisories(),
+  const [settings, regions, stayPoints, experiences, allDepartures, advisories, guides, posts] = await Promise.all([
+    getSettings(), getRegions(), getStayPoints(stayIds), getExperiencesForTrek(trek.id), getPublicDepartures(), getActiveAdvisories(), getGuidesForTrek(trek.id), getPostsForTrek(trek.id),
   ]);
   const region = regions.find((r) => r.id === trek.regionId);
   const departures = allDepartures.filter((d) => d.trekId === trek.id);
@@ -196,7 +198,7 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
             <p className="lede" style={{ marginTop: "0.5rem" }}>Each night&apos;s stop on the real terrain. Point at one to find its day.</p>
           </div>
         </div>
-        <TrekMap itinerary={trek.itinerary} stayPoints={stayPoints} trekName={trek.name} departures={departures} />
+        <TrekMap itinerary={trek.itinerary} stayPoints={stayPoints} trekName={trek.name} departures={departures} track={trek.routeTrack ?? null} />
       </section>
 
       <section className="wrap section" aria-labelledby="itinerary-title">
@@ -268,6 +270,20 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
         </section>
       )}
 
+      {guides.length > 0 && (
+        <section className="wrap section--tight" aria-labelledby="guides-title">
+          <div className="split-head">
+            <div>
+              <h2 id="guides-title" className="display display--md">Your guides</h2>
+              <p className="lede" style={{ marginTop: "0.5rem" }}>Who leads this trek. Assignments are confirmed with your booking.</p>
+            </div>
+            <Link className="link-arrow" href="/guides">All guides</Link>
+          </div>
+          {/* This trek's own photo heads each card: the guide leads it. */}
+          <div className="guide-grid" style={{ marginTop: "var(--sc-5)" }}>{guides.map((g) => <GuideCard key={g.id} guide={g} treks={[{ id: trek.id, slug: trek.slug, name: trek.name, heroImage: trek.heroImage }]} />)}</div>
+        </section>
+      )}
+
       <section className="ground-paper section" aria-labelledby="deps-title">
         <div className="wrap">
           <div className="split-head">
@@ -288,6 +304,15 @@ async function TrekDetail({ params }: { params: Promise<{ slug: string }> }) {
               </figure>
             ))}
           </div>
+        </section>
+      )}
+      {posts.length > 0 && (
+        <section className="wrap section--tight" aria-labelledby="posts-title" style={{ paddingBottom: "var(--sc-section)" }}>
+          <div className="split-head">
+            <h2 id="posts-title" className="display display--md">From the blog</h2>
+            <Link className="link-arrow" href="/blog">All posts</Link>
+          </div>
+          <div className="post-grid" style={{ marginTop: "var(--sc-5)" }}>{posts.slice(0, 3).map((p) => <PostCard key={p.id} post={p} />)}</div>
         </section>
       )}
     </ScrollStage>

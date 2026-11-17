@@ -1,4 +1,4 @@
-import type { ItineraryDay, StayPoint } from "./types";
+import type { ItineraryDay, RouteTrack, StayPoint } from "./types";
 
 export type Visit = { sp: StayPoint; days: number[] };
 
@@ -33,4 +33,22 @@ export function routeVisits(itinerary: ItineraryDay[], stayPoints: StayPoint[]) 
   while (to > from + 1 && isTransfer(legs[to - 1])) endOff.unshift(visits[to--].sp);
   const shown = visits.slice(Math.max(0, from), to + 1);
   return { visits, shown, startOff, endOff };
+}
+
+export type TrailLeg = { coords: [number, number][]; approx: boolean; km: number | null };
+
+/**
+ * The walking line between consecutive shown stops. Uses the traced
+ * OpenStreetMap path when one exists for that pair of days; otherwise a
+ * straight join flagged `approx`, which the map draws dashed, never as trail.
+ */
+export function trailLegs(shown: Visit[], track: RouteTrack | null | undefined): TrailLeg[] {
+  const legs: TrailLeg[] = [];
+  for (let i = 0; i + 1 < shown.length; i++) {
+    const a = shown[i], b = shown[i + 1];
+    const seg = track?.segments.find((s) => s.fromDay === a.days[a.days.length - 1] && s.toDay === b.days[0]);
+    if (seg && seg.source === "osm" && seg.coords.length > 1) legs.push({ coords: seg.coords, approx: false, km: seg.km });
+    else legs.push({ coords: [[a.sp.lon, a.sp.lat], [b.sp.lon, b.sp.lat]], approx: true, km: null });
+  }
+  return legs;
 }

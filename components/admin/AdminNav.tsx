@@ -24,6 +24,8 @@ const NAV: { group: string; items: { href: string; label: string; admin?: boolea
     { href: "/admin/home", label: "Homepage" },
     { href: "/admin/pages", label: "Pages" },
     { href: "/admin/faqs", label: "FAQs" },
+    { href: "/admin/guides", label: "Guides" },
+    { href: "/admin/posts", label: "Blog posts" },
     { href: "/admin/media", label: "Media" },
   ] },
   { group: "Settings", items: [

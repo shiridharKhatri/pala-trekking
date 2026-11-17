@@ -34,7 +34,13 @@ export default async function EntityEdit({ params, searchParams }: PageProps<"/a
         </div>
       </header>
       {sp.saved && <p className="a-flash a-flash--ok" role="status">Created. You can keep editing.</p>}
-      {sp.publishError && <p className="a-flash a-flash--err" role="alert">This trek needs an itinerary, a price and a featured image before it can be published.</p>}
+      {sp.publishError && (
+        <p className="a-flash a-flash--err" role="alert">
+          {sp.publishError === "consent"
+            ? "Record the guide's written consent (Consent section below) before publishing this profile."
+            : "This trek needs an itinerary, a price and a featured image before it can be published."}
+        </p>
+      )}
       {sp.deleteBlocked && <p className="a-flash a-flash--err" role="alert">This departure has bookings and cannot be deleted. Close it or hide it from the board instead.</p>}
       {doc.sample === true && <p className="a-flash a-flash--warn">This record contains sample data. Verify every value before launch.</p>}
       <EntityForm

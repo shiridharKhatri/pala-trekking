@@ -11,7 +11,8 @@
     "lint": "eslint",
     "seed": "node scripts/seed.mjs",
     "typecheck": "tsc --noEmit",
-    "seed:demo": "node scripts/seed-demo.mjs"
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "seed:content": "node scripts/seed-guides-blog.mjs"
   },
   "dependencies": {
     "maplibre-gl": "6.16.0",

@@ -3,10 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db, C } from "../db";
 import { plain, oid } from "../serialize";
 import { departureState, SEAT_HOLDING } from "../departures";
-import type {
-  Advisory, ContentPage, Departure, Experience, Faq, Gateway, PublicDeparture,
-  Region, SiteSettings, StayPoint, Trek, TrekCard,
-} from "../types";
+import type { Advisory, ContentPage, Departure, Experience, Faq, Gateway, PublicDeparture, Region, SiteSettings, StayPoint, Trek, TrekCard, Guide, Post } from "../types";
 import { DEFAULT_SETTINGS } from "../defaults";
 
 export const TAGS = {
@@ -15,6 +12,8 @@ export const TAGS = {
   content: "content",
   settings: "settings",
   advisories: "advisories",
+  guides: "guides",
+  posts: "posts",
 } as const;
 
 const CARD_FIELDS = {
@@ -176,4 +175,44 @@ export async function getFaqs(): Promise<Faq[]> {
   cacheTag(TAGS.content);
   const rows = await (await db()).collection(C.faqs).find({ published: true }).sort({ category: 1, order: 1 }).toArray();
   return plain<Faq[]>(rows);
+}
+
+
+// ------------------------------------------------------------ guides ----
+/** Guide profiles: published AND consent recorded, checked again here. */
+export async function getPublishedGuides(): Promise<Guide[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(TAGS.guides);
+  const rows = await (await db()).collection(C.guides).find({ status: "published", consent: true }).sort({ name: 1 }).toArray();
+  return plain<Guide[]>(rows);
+}
+
+export async function getGuideBySlug(slug: string): Promise<Guide | null> {
+  return (await getPublishedGuides()).find((g) => g.slug === slug) ?? null;
+}
+
+export async function getGuidesForTrek(trekId: string): Promise<Guide[]> {
+  return (await getPublishedGuides()).filter((g) => g.trekIds.includes(trekId));
+}
+
+// -------------------------------------------------------------- blog ----
+export async function getPublishedPosts(): Promise<Post[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(TAGS.posts);
+  const rows = await (await db()).collection(C.posts).find({ status: "published" }).sort({ publishedAt: -1, title: 1 }).toArray();
+  return plain<Post[]>(rows);
+}
+
+export async function getPostBySlug(slug: string): Promise<Post | null> {
+  return (await getPublishedPosts()).find((p) => p.slug === slug) ?? null;
+}
+
+export async function getPostsForTrek(trekId: string): Promise<Post[]> {
+  return (await getPublishedPosts()).filter((p) => p.relatedTrekIds.includes(trekId));
+}
+
+export async function getPostsByGuide(guideId: string): Promise<Post[]> {
+  return (await getPublishedPosts()).filter((p) => p.authorGuideId === guideId);
 }

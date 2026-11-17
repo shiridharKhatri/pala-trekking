@@ -4,11 +4,11 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import type { Map as MlMap, Marker, LngLatBoundsLike, GeoJSONSource } from "maplibre-gl";
-import type { ItineraryDay, PublicDeparture, StayPoint } from "@/lib/types";
+import type { ItineraryDay, PublicDeparture, RouteTrack, StayPoint } from "@/lib/types";
 import { date, metres } from "@/lib/format";
 import { setWeatherMode, stopReading, useWeatherState } from "@/lib/weather-sync";
 import { WeatherIcon } from "./WeatherIcon";
-import { routeVisits } from "@/lib/route-visits";
+import { routeVisits, trailLegs, type TrailLeg } from "@/lib/route-visits";
 import { darkTerrainStyle } from "@/lib/map-style";
 import { emitDayHover, scrollToDay, useDayHover } from "@/lib/day-sync";
 import { RouteMap } from "./RouteMap";
@@ -26,6 +26,17 @@ const bearingTo = (a: StayPoint, b: StayPoint) => {
   return (Math.atan2(y, x) / r + 360) % 360;
 };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** The trail revealed up to `n` legs (fractional = part of a leg), one feature per leg. */
+function legsUpTo(legs: TrailLeg[], n: number) {
+  const features = [];
+  for (let j = 0; j < legs.length && n > j; j++) {
+    const c = legs[j].coords, frac = Math.min(1, n - j);
+    const coords = frac >= 1 ? c : c.slice(0, Math.max(2, Math.ceil(c.length * frac)));
+    features.push({ type: "Feature" as const, properties: { approx: legs[j].approx }, geometry: { type: "LineString" as const, coordinates: coords } });
+  }
+  return { type: "FeatureCollection" as const, features };
+}
 
 /** Live or forecast weather for one stop, inside its map marker. */
 function PinWeather({ sp, night }: { sp: StayPoint; night: number }) {
@@ -49,7 +60,7 @@ const hasWebGL = () => {
  * Loaded only when the section nears the viewport; the SVG sketch stays as
  * the fallback (no WebGL, tiles blocked, or the map fails to start).
  */
-export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { itinerary: ItineraryDay[]; stayPoints: StayPoint[]; trekName: string; departures?: PublicDeparture[] }) {
+export function TrekMap({ itinerary, stayPoints, trekName, departures = [], track = null }: { itinerary: ItineraryDay[]; stayPoints: StayPoint[]; trekName: string; departures?: PublicDeparture[]; track?: RouteTrack | null }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const markersRef = useRef<Map<number, { marker: Marker; el: HTMLElement }>>(new Map());
@@ -69,6 +80,8 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
   useDayHover("map3d", setHoverDay);
 
   const route = routeVisits(itinerary, stayPoints);
+  const legs = trailLegs(route.shown, track);
+  const traced = legs.some((l) => !l.approx);
   const usable = route.shown.length >= 2;
 
   // Highlight the marker for the day pointed at elsewhere on the page.
@@ -105,7 +118,8 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
         ml.setWorkerUrl("/vendor/maplibre/maplibre-gl-worker.mjs");
         const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
         const pts = route.shown.map((v) => [v.sp.lon, v.sp.lat] as [number, number]);
-        const lons = pts.map((p) => p[0]), lats = pts.map((p) => p[1]);
+        const all = legs.flatMap((l) => l.coords).concat(pts);
+        const lons = all.map((p) => p[0]), lats = all.map((p) => p[1]);
         const bounds: LngLatBoundsLike = [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]];
         const canvas = box.querySelector<HTMLDivElement>(".tmap__canvas")!;
 
@@ -140,9 +154,13 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
           ];
           m.addSource("transfer", { type: "geojson", data: { type: "FeatureCollection", features: transfer.map((c) => ({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: c } })) } });
           m.addLayer({ id: "transfer", type: "line", source: "transfer", paint: { "line-color": "#9fabad", "line-width": 1.5, "line-dasharray": [2, 3], "line-opacity": 0.7 } });
-          m.addSource("route", { type: "geojson", lineMetrics: true, data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: reduce ? pts : pts.slice(0, 1) } } });
-          m.addLayer({ id: "route-glow", type: "line", source: "route", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#e4583e", "line-width": 10, "line-blur": 8, "line-opacity": 0.45 } });
-          m.addLayer({ id: "route", type: "line", source: "route", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#e4583e", "line-width": 3.2 } });
+          // Traced legs are drawn as the trail; untraced legs only as a thin
+          // dashed join, so a guessed line never looks like a real path.
+          const isTrail: ["!=", ["get", string], boolean] = ["!=", ["get", "approx"], true];
+          m.addSource("route", { type: "geojson", data: legsUpTo(legs, reduce ? legs.length : 0) });
+          m.addLayer({ id: "route-glow", type: "line", source: "route", filter: isTrail, layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#e4583e", "line-width": 9, "line-blur": 7, "line-opacity": 0.4 } });
+          m.addLayer({ id: "route", type: "line", source: "route", filter: isTrail, layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#e4583e", "line-width": 3 } });
+          m.addLayer({ id: "route-approx", type: "line", source: "route", filter: ["==", ["get", "approx"], true], paint: { "line-color": "#e4583e", "line-width": 1.6, "line-dasharray": [1.5, 2.5], "line-opacity": 0.85 } });
 
           // Markers: one per stop (rest nights merged), the highest as a summit.
           const highest = route.shown.reduce((a, b) => (b.sp.elevationM > a.sp.elevationM ? b : a));
@@ -171,8 +189,8 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
           });
           setPins(pinList);
           // The walked part of the route, lit up during the fly-through.
-          m.addSource("walked", { type: "geojson", data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } } });
-          m.addLayer({ id: "walked", type: "line", source: "walked", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffb39e", "line-width": 5, "line-opacity": 0.95 } });
+          m.addSource("walked", { type: "geojson", data: legsUpTo(legs, 0) });
+          m.addLayer({ id: "walked", type: "line", source: "walked", filter: isTrail, layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffb39e", "line-width": 4.5, "line-opacity": 0.95 } });
           // Any manual drag or zoom pauses the tour.
           const pause = () => { tourToken.current++; setTour((t) => (t ? { ...t, playing: false } : t)); };
           m.on("dragstart", pause);
@@ -191,18 +209,12 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
           // Cinematic entrance: tilt into the terrain while the route draws.
           home(true);
           let t0: number | null = null;
-          const dur = 2400;
-          const total = pts.length - 1;
+          const dur = traced ? 3200 : 2400;
           const step = (t: number) => {
             if (cancelled) return;
             if (t0 === null) t0 = t;
             const k = Math.min(1, Math.max(0, (t - t0) / dur)), e = 1 - Math.pow(1 - k, 2);
-            const f = e * total, i = Math.floor(f), r = f - i;
-            const coords = pts.slice(0, i + 1);
-            if (i < total && pts[i] && pts[i + 1]) {
-              coords.push([pts[i][0] + (pts[i + 1][0] - pts[i][0]) * r, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * r]);
-            }
-            (m.getSource("route") as import("maplibre-gl").GeoJSONSource | undefined)?.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } });
+            (m.getSource("route") as GeoJSONSource | undefined)?.setData(legsUpTo(legs, e * legs.length));
             if (k < 1) requestAnimationFrame(step);
           };
           requestAnimationFrame(step);
@@ -243,15 +255,19 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
     const m = mapRef.current;
     if (!m) return;
     const v = stops[i];
-    const prev = stops[Math.max(0, i - 1)];
-    const bearing = i > 0 && (prev.sp.lon !== v.sp.lon || prev.sp.lat !== v.sp.lat) ? bearingTo(prev.sp, v.sp) : m.getBearing();
-    (m.getSource("walked") as GeoJSONSource | undefined)?.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: stops.slice(0, i + 1).map((s) => [s.sp.lon, s.sp.lat]) } });
+    // Face the way the trail arrives: from a point a little back along the leg.
+    const leg = i > 0 ? legs[i - 1].coords : null;
+    const from = leg && leg.length > 1 ? leg[Math.max(0, leg.length - 12)] : null;
+    const bearing = from && (from[0] !== v.sp.lon || from[1] !== v.sp.lat)
+      ? bearingTo({ lon: from[0], lat: from[1] } as StayPoint, v.sp)
+      : m.getBearing();
+    (m.getSource("walked") as GeoJSONSource | undefined)?.setData(legsUpTo(legs, i));
     setHoverDay(v.days[0]);
     emitDayHover(v.days[0], "map3d");
     // Frame the stop in the space above the tour card, never under it.
     const narrow = m.getContainer().clientWidth < 600;
     const padding = narrow ? { top: 60, bottom: 190, left: 20, right: 20 } : { top: 70, bottom: 150, left: 60, right: 60 };
-    const cam = { center: [v.sp.lon, v.sp.lat] as [number, number], zoom: 12.4, pitch: 62, bearing, padding };
+    const cam = { center: [v.sp.lon, v.sp.lat] as [number, number], zoom: 13.6, pitch: 62, bearing, padding }; // z13+: OSM buildings show
     if (!animate) { m.jumpTo(cam); return; }
     m.flyTo({ ...cam, duration: 3200, essential: true });
     await new Promise<void>((res) => m.once("moveend", () => res()));
@@ -289,7 +305,7 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
     setTour(null);
     setHoverDay(null);
     emitDayHover(null, "map3d");
-    (mapRef.current?.getSource("walked") as GeoJSONSource | undefined)?.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } });
+    (mapRef.current?.getSource("walked") as GeoJSONSource | undefined)?.setData(legsUpTo(legs, 0));
     homeRef.current();
   };
   const cur = tour ? stops[tour.i] : null;
@@ -312,88 +328,93 @@ export function TrekMap({ itinerary, stayPoints, trekName, departures = [] }: { 
   return (
     <figure className="tmap" ref={boxRef} data-state={state} data-touring={tour ? "" : undefined}>
       <div className="tmap__stage">
-      <div className="tmap__canvas" role="region" aria-label={`Interactive 3D map of the ${trekName} route. Use the buttons on each stop to jump to its day.`} />
-      {state !== "ready" && (
-        <div className="tmap__loading"><RidgeLoader label="Loading terrain" /></div>
-      )}
-      <div className="tmap__tools">
-        <button type="button" className="tmap__btn" onClick={toggle3d} aria-pressed={is3d} disabled={state !== "ready"}>{is3d ? "3D" : "2D"}</button>
-        <button type="button" className="tmap__btn" onClick={() => (tour ? endTour() : homeRef.current())} disabled={state !== "ready"}>Reset view</button>
-        {departures.length > 0 && (
-          <select
-            className="tmap__btn tmap__select"
-            aria-label="Weather on the map"
-            value={weather.mode.kind === "now" ? "" : weather.mode.start}
-            onChange={(e) => setWeatherMode(e.target.value ? { kind: "departure", start: e.target.value } : { kind: "now" })}
-            disabled={state !== "ready"}
-          >
-            <option value="">Weather now</option>
-            {departures.map((d) => <option key={d.id} value={d.startDate}>Forecast: {date(d.startDate, { year: undefined })} departure</option>)}
-          </select>
+        <div className="tmap__canvas" role="region" aria-label={`Interactive 3D map of the ${trekName} route. Use the buttons on each stop to jump to its day.`} />
+        {state !== "ready" && (
+          <div className="tmap__loading"><RidgeLoader label="Loading terrain" /></div>
         )}
-      </div>
-      {state === "ready" && (
-        <div className="tmap__play">
-          {!tour ? (
-            <button type="button" className="tmap__fly" onClick={startTour}>
-              <span aria-hidden="true">▶</span> {reduce ? "Step through the route" : "Fly the route"}
-            </button>
-          ) : (
-            <div className="tmap__tour" role="group" aria-label="Route tour">
-              <div className="tmap__tourhead">
-                <span className="tmap__tourday">Day {cur!.days.join("–")}</span>
-                <button type="button" className="tmap__tourclose" onClick={endTour} aria-label="End tour">✕</button>
-              </div>
-              <div aria-live="polite">
-                <strong className="tmap__tourname">{cur!.sp.name}</strong>
-                <span className="tmap__tourmeta">
-                  <span>{metres(cur!.sp.elevationM)}</span>
-                  {curWx?.ok && (
-                    <span className="tmap__tourwx" title={curWx.when === "now" ? "Current conditions, not a forecast for your dates" : `Forecast for ${curWx.when}`}>
-                      <WeatherIcon kind={curWx.icon} label={curWx.label} className="tmap__wxicon" />
-                      {curWx.temp} {curWx.label.toLowerCase()}
-                      <em>{curWx.when === "now" ? "now" : curWx.when}</em>
-                    </span>
-                  )}
-                  {curWx && !curWx.ok && <span className="tmap__tourmuted">{curWx.reason}</span>}
-                </span>
-              </div>
-              <div className="tmap__tourfoot">
-                <ol className="tmap__dots" aria-label="Stops">
-                  {stops.map((s, i) => (
-                    <li key={i}>
-                      <button
-                        type="button"
-                        data-state={i < tour.i ? "done" : i === tour.i ? "here" : undefined}
-                        aria-current={i === tour.i ? "step" : undefined}
-                        aria-label={`Day ${s.days.join("–")}: ${s.sp.name}`}
-                        title={s.sp.name}
-                        onClick={() => goTo(i)}
-                      />
-                    </li>
-                  ))}
-                </ol>
-                <div className="tmap__tourctl">
-                  <button type="button" onClick={() => stepTour(-1)} aria-label="Previous stop" data-hidden={tour.i === 0 || undefined}>‹</button>
-                  {tour.i === stops.length - 1 && !tour.playing ? (
-                    <button type="button" className="tmap__tourmain" onClick={replay} aria-label="Replay the route">↺</button>
-                  ) : !reduce ? (
-                    tour.playing
-                      ? <button type="button" className="tmap__tourmain" onClick={pauseTour} aria-label="Pause">❚❚</button>
-                      : <button type="button" className="tmap__tourmain" onClick={startTour} aria-label="Play">▶</button>
-                  ) : null}
-                  <button type="button" onClick={() => stepTour(1)} aria-label="Next stop" data-hidden={tour.i === stops.length - 1 || undefined}>›</button>
-                </div>
-              </div>
-            </div>
+        <div className="tmap__tools">
+          <button type="button" className="tmap__btn" onClick={toggle3d} aria-pressed={is3d} disabled={state !== "ready"}>{is3d ? "3D" : "2D"}</button>
+          <button type="button" className="tmap__btn" onClick={() => (tour ? endTour() : homeRef.current())} disabled={state !== "ready"}>Reset view</button>
+          {departures.length > 0 && (
+            <select
+              className="tmap__btn tmap__select"
+              aria-label="Weather on the map"
+              value={weather.mode.kind === "now" ? "" : weather.mode.start}
+              onChange={(e) => setWeatherMode(e.target.value ? { kind: "departure", start: e.target.value } : { kind: "now" })}
+              disabled={state !== "ready"}
+            >
+              <option value="">Weather now</option>
+              {departures.map((d) => <option key={d.id} value={d.startDate}>Forecast: {date(d.startDate, { year: undefined })} departure</option>)}
+            </select>
           )}
         </div>
-      )}
+        {state === "ready" && (
+          <div className="tmap__play">
+            {!tour ? (
+              <button type="button" className="tmap__fly" onClick={startTour}>
+                <span aria-hidden="true">▶</span> {reduce ? "Step through the route" : "Fly the route"}
+              </button>
+            ) : (
+              <div className="tmap__tour" role="group" aria-label="Route tour">
+                <div className="tmap__tourhead">
+                  <span className="tmap__tourday">Day {cur!.days.join("–")}</span>
+                  <button type="button" className="tmap__tourclose" onClick={endTour} aria-label="End tour">✕</button>
+                </div>
+                <div aria-live="polite">
+                  <strong className="tmap__tourname">{cur!.sp.name}</strong>
+                  <span className="tmap__tourmeta">
+                    <span>{metres(cur!.sp.elevationM)}</span>
+                  {tour.i > 0 && (legs[tour.i - 1].approx
+                    ? <span className="tmap__tourmuted" title="No mapped path between these stops in OpenStreetMap">route not mapped</span>
+                    : <span title={`Walking distance from ${stops[tour.i - 1].sp.name}, along mapped paths`}>{legs[tour.i - 1].km} km walk</span>)}
+                    {curWx?.ok && (
+                      <span className="tmap__tourwx" title={curWx.when === "now" ? "Current conditions, not a forecast for your dates" : `Forecast for ${curWx.when}`}>
+                        <WeatherIcon kind={curWx.icon} label={curWx.label} className="tmap__wxicon" />
+                        {curWx.temp} {curWx.label.toLowerCase()}
+                        <em>{curWx.when === "now" ? "now" : curWx.when}</em>
+                      </span>
+                    )}
+                    {curWx && !curWx.ok && <span className="tmap__tourmuted">{curWx.reason}</span>}
+                  </span>
+                </div>
+                <div className="tmap__tourfoot">
+                  <ol className="tmap__dots" aria-label="Stops">
+                    {stops.map((s, i) => (
+                      <li key={i}>
+                        <button
+                          type="button"
+                          data-state={i < tour.i ? "done" : i === tour.i ? "here" : undefined}
+                          aria-current={i === tour.i ? "step" : undefined}
+                          aria-label={`Day ${s.days.join("–")}: ${s.sp.name}`}
+                          title={s.sp.name}
+                          onClick={() => goTo(i)}
+                        />
+                      </li>
+                    ))}
+                  </ol>
+                  <div className="tmap__tourctl">
+                    <button type="button" onClick={() => stepTour(-1)} aria-label="Previous stop" data-hidden={tour.i === 0 || undefined}>‹</button>
+                    {tour.i === stops.length - 1 && !tour.playing ? (
+                      <button type="button" className="tmap__tourmain" onClick={replay} aria-label="Replay the route">↺</button>
+                    ) : !reduce ? (
+                      tour.playing
+                        ? <button type="button" className="tmap__tourmain" onClick={pauseTour} aria-label="Pause">❚❚</button>
+                        : <button type="button" className="tmap__tourmain" onClick={startTour} aria-label="Play">▶</button>
+                    ) : null}
+                    <button type="button" onClick={() => stepTour(1)} aria-label="Next stop" data-hidden={tour.i === stops.length - 1 || undefined}>›</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       {pins.map((p) => createPortal(<PinWeather sp={p.sp} night={p.nights[0]} />, p.slot, p.sp.id))}
       <figcaption className="label">
-        Real terrain, the line joins each night&apos;s stop in order (not the exact trail).
-        {(route.startOff.length > 0 || route.endOff.length > 0) && " Dashed: transfer to the gateway city."}
+        {traced
+          ? <>Trail traced along OpenStreetMap footpaths between each night&apos;s stop{legs.some((l) => l.approx) ? "; dashed where the path isn't mapped" : ""}. Buildings, lodges <i className="tmap__key tmap__key--lodge" />, campsites <i className="tmap__key tmap__key--camp" /> and monasteries <i className="tmap__key tmap__key--gompa" /> from OpenStreetMap.</>
+          : <>Dashed line joins each night&apos;s stop in order; the exact trail is not traced yet.</>}
+        {(route.startOff.length > 0 || route.endOff.length > 0) && " Thin grey dashes: transfer to the gateway city."}
         <span className="tmap__hint-mouse"> Drag to pan, Ctrl or ⌘ + scroll to zoom, right-drag to tilt.</span>
         <span className="tmap__hint-touch"> Use two fingers to move, zoom and tilt.</span>
       </figcaption>

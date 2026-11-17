@@ -12,7 +12,8 @@ const NAV = [
   { href: "/gateways/pokhara", label: "Pokhara" },
   { href: "/departures", label: "Departures" },
   { href: "/experiences", label: "Experiences" },
-  { href: "/faqs", label: "FAQs" },
+  { href: "/guides", label: "Guides" },
+  { href: "/blog", label: "Blog" },
 ];
 
 export function Mark() {

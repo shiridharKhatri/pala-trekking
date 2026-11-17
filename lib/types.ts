@@ -96,11 +96,27 @@ export interface Trek {
   // Media
   heroImage: Media | null;
   gallery: Media[];
+  // Traced trail, if one has been built
+  routeTrack?: RouteTrack | null;
   // SEO
   seoTitle: string;
   seoDescription: string;
   updatedAt: string;
 }
+
+/** Real walking route between overnight stops (scripts/trace-trails.mjs). */
+export interface RouteSegment {
+  fromDay: number;
+  toDay: number;
+  from: string;
+  to: string;
+  /** osm: traced along mapped paths; approx: no mapped path, straight join; transfer: flight or drive */
+  source: "osm" | "approx" | "transfer";
+  km: number;
+  coords: [number, number][];
+  note?: string;
+}
+export interface RouteTrack { builtAt: string; source: string; segments: RouteSegment[] }
 
 export type TrekCard = Pick<
   Trek,
@@ -138,6 +154,42 @@ export interface Experience {
   capacityNote: string;
   status: PublishStatus;
   sample: boolean;
+}
+
+/** A mountain guide's public profile. Published only with their consent. */
+export interface Guide {
+  id: string;
+  slug: string;
+  name: string;
+  role: string;
+  summary: string;
+  photo: Media | null;
+  yearsLeading: number | null;
+  languages: string[];
+  certifications: string[];
+  bio: string;
+  trekIds: string[];
+  consent: boolean;
+  status: PublishStatus;
+  sample: boolean;
+  updatedAt: string;
+}
+
+export interface Post {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  cover: Media | null;
+  body: string;
+  tags: string[];
+  authorGuideId: string | null;
+  relatedTrekIds: string[];
+  publishedAt: string | null;
+  seoDescription: string;
+  status: PublishStatus;
+  sample: boolean;
+  updatedAt: string;
 }
 
 export type DepartureStatus = "forming" | "confirmed" | "almost-full" | "full" | "closed";

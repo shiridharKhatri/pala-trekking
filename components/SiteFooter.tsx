@@ -30,6 +30,8 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
               <li><Link href="/departures">Departure board</Link></li>
               <li><Link href="/experiences">Optional experiences</Link></li>
               <li><Link href="/faqs">FAQs</Link></li>
+              <li><Link href="/guides">Our guides</Link></li>
+              <li><Link href="/blog">Blog</Link></li>
               <li><Link href="/contact">Contact</Link></li>
             </ul>
           </div>

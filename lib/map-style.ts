@@ -73,10 +73,43 @@ export function darkTerrainStyle(): StyleSpecification {
         filter: ["!", ["in", ["get", "class"], ["literal", ["path", "track"]]]],
         paint: { "line-color": C.road, "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 14, 2] },
       },
+      // Every mapped footpath and track (OpenStreetMap), visible from valley scale.
       {
-        id: "trails", type: "line", source: "omt", "source-layer": "transportation", minzoom: 10,
+        id: "trails", type: "line", source: "omt", "source-layer": "transportation", minzoom: 9,
         filter: ["in", ["get", "class"], ["literal", ["path", "track"]]],
-        paint: { "line-color": C.path, "line-width": 1, "line-dasharray": [2, 2], "line-opacity": 0.8 },
+        paint: { "line-color": "#8d9a9e", "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.5, 12, 1.1, 15, 2], "line-dasharray": [2, 1.5], "line-opacity": ["interpolate", ["linear"], ["zoom"], 9, 0.45, 12, 0.85] },
+      },
+      // Real buildings: lodges, houses and monasteries as low 3D blocks.
+      {
+        id: "buildings", type: "fill-extrusion", source: "omt", "source-layer": "building", minzoom: 13,
+        paint: {
+          "fill-extrusion-color": "#6b5a48",
+          "fill-extrusion-height": ["max", ["coalesce", ["get", "render_height"], 5], 4],
+          "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
+          "fill-extrusion-opacity": 0.92,
+        },
+      },
+      // Lodges and guesthouses, campsites and huts, monasteries: real OSM points.
+      {
+        id: "stay-pois", type: "circle", source: "omt", "source-layer": "poi", minzoom: 12,
+        filter: ["any", ["in", ["get", "class"], ["literal", ["lodging", "campsite", "place_of_worship"]]], ["in", ["get", "subclass"], ["literal", ["alpine_hut", "wilderness_hut", "shelter", "guest_house", "hostel", "hotel", "camp_site", "monastery"]]]],
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 2.5, 15, 5],
+          "circle-color": ["match", ["get", "class"], "campsite", "#6fb38a", "place_of_worship", "#c7b5e0", "#e0a640"],
+          "circle-stroke-color": "#0d1114", "circle-stroke-width": 1.2,
+        },
+      },
+      {
+        id: "stay-poi-labels", type: "symbol", source: "omt", "source-layer": "poi", minzoom: 14,
+        filter: ["all", ["has", "name"], ["any", ["in", ["get", "class"], ["literal", ["lodging", "campsite", "place_of_worship"]]], ["in", ["get", "subclass"], ["literal", ["alpine_hut", "wilderness_hut", "guest_house", "hostel", "hotel", "camp_site", "monastery"]]]]],
+        layout: { "text-field": ["coalesce", ["get", "name_en"], ["get", "name:en"], ["get", "name_int"], ["get", "name:latin"], ["get", "name"]], "text-font": ["Noto Sans Regular"], "text-size": 10, "text-offset": [0, 0.9], "text-anchor": "top", "text-max-width": 9, "text-optional": true },
+        paint: { "text-color": "#c9cfc8", "text-halo-color": C.halo, "text-halo-width": 1.3 },
+      },
+      {
+        id: "hamlets", type: "symbol", source: "omt", "source-layer": "place", minzoom: 11,
+        filter: ["in", ["get", "class"], ["literal", ["hamlet", "isolated_dwelling", "locality"]]],
+        layout: { "text-field": ["coalesce", ["get", "name_en"], ["get", "name:en"], ["get", "name_int"], ["get", "name:latin"], ["get", "name"]], "text-font": ["Noto Sans Regular"], "text-size": 9.5, "text-max-width": 8 },
+        paint: { "text-color": "#8a9698", "text-halo-color": C.halo, "text-halo-width": 1.2 },
       },
       {
         id: "places", type: "symbol", source: "omt", "source-layer": "place",

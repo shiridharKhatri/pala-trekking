@@ -37,6 +37,8 @@ export const C = {
   settings: "settings",
   pages: "pages",
   faqs: "faqs",
+  guides: "guides",
+  posts: "posts",
   inquiries: "inquiries",
   users: "users",
   sessions: "sessions",

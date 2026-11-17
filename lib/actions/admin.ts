@@ -230,6 +230,16 @@ export async function saveEntity(key: string, id: string | null, _: AdminState, 
       if (!hero) errors.heroImage = "A published trek needs a featured image";
     }
   }
+  if (key === "guides") {
+    // A real person's profile goes public only with their recorded consent.
+    const status = (values.status ?? existing?.status ?? "draft") as string;
+    const consent = values.consent !== undefined ? values.consent : existing?.consent;
+    if (status === "published" && !consent) errors.status = "Record the guide's consent before publishing this profile";
+  }
+  if (key === "posts") {
+    const status = (values.status ?? existing?.status ?? "draft") as string;
+    if (status === "published" && !values.publishedAt && !existing?.publishedAt) values.publishedAt = new Date().toISOString().slice(0, 10);
+  }
   if (Object.keys(errors).length) return { ok: false, errors, message: "Please correct the highlighted fields." };
 
   const now = new Date();
@@ -241,6 +251,8 @@ export async function saveEntity(key: string, id: string | null, _: AdminState, 
     if (def.hasStatus && data.status === undefined) defaults.status = "draft";
     if (key === "treks") Object.assign(defaults, { basePrice: 0, featured: false, sample: false, itinerary: data.itinerary ?? [], gallery: data.gallery ?? [] });
     if (key === "experiences") Object.assign(defaults, { price: 0, eligibleTrekIds: [], sample: false });
+    if (key === "guides") Object.assign(defaults, { consent: false, trekIds: [], languages: [], certifications: [], sample: false });
+    if (key === "posts") Object.assign(defaults, { tags: [], relatedTrekIds: [], authorGuideId: null, sample: false });
     if (key === "departures") Object.assign(defaults, { offlineBooked: data.offlineBooked ?? 0, minGroup: data.minGroup ?? 2 });
     const res = await coll.insertOne({ ...defaults, ...data, updatedAt: now });
     await audit(user, "create", `${def.collection}/${res.insertedId.toHexString()}`);
@@ -265,7 +277,16 @@ export async function setStatus(key: string, id: string, status: "draft" | "publ
     const t = await coll.findOne({ _id });
     if (!t?.itinerary?.length || !(t.basePrice > 0) || !t.heroImage) redirect(`/admin/${key}/${_id.toHexString()}?publishError=1`);
   }
-  await coll.updateOne({ _id }, { $set: { status, updatedAt: new Date() } });
+  if (status === "published" && key === "guides") {
+    const g = await coll.findOne({ _id });
+    if (!g?.consent) redirect(`/admin/${key}/${_id.toHexString()}?publishError=consent`);
+  }
+  const extra: Record<string, unknown> = {};
+  if (status === "published" && key === "posts") {
+    const p = await coll.findOne({ _id });
+    if (!p?.publishedAt) extra.publishedAt = new Date().toISOString().slice(0, 10);
+  }
+  await coll.updateOne({ _id }, { $set: { status, ...extra, updatedAt: new Date() } });
   await audit(user, `status.${status}`, `${def.collection}/${id}`);
   def.tags.forEach((t) => updateTag(t));
 }

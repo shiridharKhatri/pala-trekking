@@ -6,7 +6,7 @@ export type FieldType =
   | "text" | "textarea" | "number" | "select" | "checkbox" | "date" | "lines"
   | "multiselect" | "media" | "itinerary" | "gallery" | "rates";
 
-export type OptionSource = "regions" | "treks" | "stayPoints" | "gateways" | "currencies";
+export type OptionSource = "regions" | "treks" | "stayPoints" | "gateways" | "currencies" | "guides";
 
 export interface Field {
   name: string; // dotted path for nested values, e.g. "company.email"
@@ -122,6 +122,44 @@ export const ENTITIES: Record<string, EntityDef> = {
       { name: "availableFrom", label: "Available from", type: "date" },
       { name: "availableTo", label: "Available until", type: "date" },
       { name: "capacityNote", label: "Capacity notes", type: "text" },
+      SAMPLE,
+    ],
+  },
+  guides: {
+    key: "guides", collection: "guides", title: "Guides", singular: "guide profile", roles: ["admin", "content"], tags: ["guides"],
+    sort: { status: -1, name: 1 }, canCreate: true, canDelete: false, hasStatus: true, titleField: "name",
+    listColumns: [{ name: "name", label: "Name" }, { name: "role", label: "Role" }, { name: "consent", label: "Consent" }, { name: "status", label: "Status" }],
+    fields: [
+      { name: "name", label: "Full name", type: "text", required: true, group: "Identity" },
+      { ...SLUG, group: "Identity" },
+      { ...STATUS, group: "Identity", help: "A profile can only be published once the guide's consent is recorded below." },
+      { name: "role", label: "Role", type: "text", required: true, group: "Identity", help: "For example: Lead trekking guide, Assistant guide." },
+      { name: "summary", label: "Short introduction", type: "textarea", rows: 2, max: 160, group: "Identity", help: "One or two sentences shown on guide cards, ideally in the guide's own words." },
+      { name: "photo", label: "Photo", type: "media", group: "Identity", help: "Only a photo the guide has agreed to publish." },
+      { name: "yearsLeading", label: "Years leading treks", type: "number", min: 0, max: 60, group: "Experience" },
+      { name: "languages", label: "Languages (one per line)", type: "lines", group: "Experience" },
+      { name: "certifications", label: "Licences and certifications (one per line)", type: "lines", group: "Experience", help: "Only list licences and courses you have seen evidence of." },
+      { name: "trekIds", label: "Treks this guide leads", type: "multiselect", optionSource: "treks", group: "Experience" },
+      { name: "bio", label: "About", type: "textarea", rows: 8, group: "Profile", help: "In the guide's own words where possible. Blank lines separate paragraphs." },
+      { name: "consent", label: "Published with this guide's written consent", type: "checkbox", adminOnly: true, group: "Consent", help: "Required before publishing. Untick to take the profile down, then set it to draft." },
+      { ...SAMPLE, group: "Consent" },
+    ],
+  },
+  posts: {
+    key: "posts", collection: "posts", title: "Blog posts", singular: "post", roles: ["admin", "content"], tags: ["posts"],
+    sort: { publishedAt: -1, title: 1 }, canCreate: true, canDelete: true, hasStatus: true, titleField: "title",
+    listColumns: [{ name: "title", label: "Title" }, { name: "publishedAt", label: "Date" }, { name: "status", label: "Status" }],
+    fields: [
+      { name: "title", label: "Title", type: "text", required: true, max: 120 },
+      SLUG, STATUS,
+      { name: "publishedAt", label: "Publication date", type: "date", help: "Set automatically when first published if left empty." },
+      { name: "excerpt", label: "Short summary", type: "textarea", rows: 2, required: true, max: 280 },
+      { name: "cover", label: "Cover image", type: "media" },
+      { name: "body", label: "Article", type: "textarea", rows: 18, required: true, help: "Blank lines separate paragraphs. Start a line with ## for a heading, - for a bullet." },
+      { name: "tags", label: "Tags (one per line)", type: "lines", help: "For example: Altitude, Packing, Everest region." },
+      { name: "authorGuideId", label: "Written by guide", type: "select", optionSource: "guides", help: "Leave as None for posts by the Pala Trekking team." },
+      { name: "relatedTrekIds", label: "Related treks", type: "multiselect", optionSource: "treks" },
+      { name: "seoDescription", label: "SEO description", type: "textarea", rows: 2, max: 170 },
       SAMPLE,
     ],
   },
