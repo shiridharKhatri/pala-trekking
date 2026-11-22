@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, IBM_Plex_Mono } from "next/font/google";
+import { getSiteUrl } from "@/lib/site-url";
 import "@/vendor/scrollcraft/scrollcraft.css";
 import "./globals.css";
 
 const archivo = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-archivo", display: "swap" });
 const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex-mono", display: "swap" });
 
-const SITE = process.env.SITE_URL ?? "http://localhost:3000";
+const SITE = getSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
@@ -27,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <style>{`[data-sc-cue],[data-sc-in],[data-sc-stagger]>*{opacity:1!important;transform:none!important}`}</style>
         </noscript>
       </head>
-      <body>{children}</body>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }

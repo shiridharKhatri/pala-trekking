@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 52" fill="none">
+  <!-- Mark -->
+  <g transform="translate(6, 6) scale(0.45)">
+    <path d="M 1 87 L 52 1 L 70 32 L 52 48 C 62 52 74 58 75 68 C 75 77 58 83 40 87 Z" fill="#e4583e" />
+    <path d="M 90 1 L 142 87 L 85 87 C 93 84 96 78 96 71 C 96 62 83 52 64 46 Z" fill="#ffffff" />
+  </g>
+  <!-- Wordmark -->
+  <text x="80" y="33" font-family="'Archivo', system-ui, -apple-system, sans-serif" font-weight="800" font-size="20" letter-spacing="0.16em" fill="#ffffff">PALA TREKKING</text>
+</svg>

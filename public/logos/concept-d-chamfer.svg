@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 56" fill="none">
+  <!-- Concept D: Faceted Alpine Pyramids -->
+  <g transform="translate(10, 10)">
+    <!-- Main Summit Dark Facet -->
+    <polygon points="18,4 32,32 18,32" fill="currentColor" opacity="0.9"/>
+    <!-- Main Summit Light Facet -->
+    <polygon points="18,4 18,32 4,32" fill="currentColor" opacity="0.35"/>
+    <!-- Secondary Peak Accent Facet -->
+    <polygon points="32,16 42,32 32,32" fill="#e4583e"/>
+  </g>
+  <text x="64" y="31" font-family="'Archivo', sans-serif" font-weight="900" font-size="23" letter-spacing="0.15em" fill="currentColor">PALA</text>
+  <text x="142" y="31" font-family="'Archivo', sans-serif" font-weight="300" font-size="23" letter-spacing="0.22em" fill="currentColor" opacity="0.75">TREKKING</text>
+  <text x="65" y="44" font-family="'IBM Plex Mono', monospace" font-weight="500" font-size="7.5" letter-spacing="0.28em" fill="#e4583e">NEPAL · EST. KATHMANDU</text>
+</svg>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
+  <!-- PALA TREKKING - Machapuchare Sacred Ridge Crest -->
+  <g transform="translate(16, 12)">
+    <!-- Outer Minimal Shield / Crest -->
+    <rect x="0" y="0" width="56" height="56" rx="14" fill="#151b1f" stroke="#253036" stroke-width="1.5"/>
+    
+    <!-- Sacred Double Summit (Machapuchare / Fishtail Peak) -->
+    <!-- Left Ridge -->
+    <path d="M12 42 L24 16 L28 23 L32 16 L44 42" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Central Ridge Spine -->
+    <path d="M28 23 L28 42" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" opacity="0.45"/>
+    
+    <!-- Alpenglow Accent Dot at the Notch -->
+    <circle cx="28" cy="14" r="3" fill="#e4583e"/>
+    
+    <!-- Topographic contour base line -->
+    <path d="M18 42 H38" stroke="#e4583e" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Typography -->
+  <!-- Brand Name -->
+  <text x="88" y="38" font-family="'Archivo', system-ui, -apple-system, sans-serif" font-weight="800" font-size="24" letter-spacing="0.12em" fill="#ffffff">PALA</text>
+  <text x="172" y="38" font-family="'Archivo', system-ui, -apple-system, sans-serif" font-weight="300" font-size="24" letter-spacing="0.22em" fill="#9fabad">TREKKING</text>
+  
+  <!-- Subtitle -->
+  <text x="89" y="54" font-family="'IBM Plex Mono', monospace" font-weight="500" font-size="9" letter-spacing="0.32em" fill="#e4583e">NEPAL · HIMALAYAN EXPEDITIONS</text>
+</svg>

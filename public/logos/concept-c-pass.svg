@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 56" fill="none">
+  <!-- Concept C: High Mountain Pass (La) -->
+  <g transform="translate(10, 10)">
+    <path d="M4 32 L16 10 L28 20" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M28 20 L38 6 L48 32" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- The Pass Trail Cut through the Center -->
+    <path d="M22 32 L28 20 L34 32" stroke="#e4583e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="28" cy="12" r="2.5" fill="#e4583e"/>
+  </g>
+  <text x="72" y="32" font-family="'Archivo', sans-serif" font-weight="800" font-size="22" letter-spacing="0.12em" fill="currentColor">PALA</text>
+  <text x="146" y="32" font-family="'Archivo', sans-serif" font-weight="300" font-size="22" letter-spacing="0.2em" fill="currentColor" opacity="0.75">TREKKING</text>
+  <text x="73" y="44" font-family="'IBM Plex Mono', monospace" font-weight="500" font-size="7.5" letter-spacing="0.3em" fill="#e4583e">HIGH PASS EXPEDITIONS · NEPAL</text>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Ultra-Minimalist Pala Peak Mark -->
+  <!-- Primary West Ridge -->
+  <path d="M4 28 L16 4 L22 14" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- East Face Trail / Ridge -->
+  <path d="M22 14 L28 28" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/>
+  <!-- Alpenglow Waypoint at the Summit -->
+  <circle cx="16" cy="4" r="2.5" fill="#e4583e"/>
+</svg>

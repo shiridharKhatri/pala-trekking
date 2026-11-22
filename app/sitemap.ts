@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { getPublishedExperiences, getPublishedGuides, getPublishedPosts, getPublishedSlugs } from "@/lib/data/public";
+import { getSiteUrl } from "@/lib/site-url";
 
-const SITE = process.env.SITE_URL ?? "http://localhost:3000";
+const SITE = getSiteUrl();
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [treks, exps, guides, posts] = await Promise.all([getPublishedSlugs(), getPublishedExperiences(), getPublishedGuides(), getPublishedPosts()]);

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" fill="none">
+  <!-- Minimalist Mark -->
+  <g transform="translate(6, 8)">
+    <path d="M4 28 L16 4 L22 14" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M22 14 L28 28" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/>
+    <circle cx="16" cy="4" r="2.5" fill="#e4583e"/>
+  </g>
+
+  <!-- Typography -->
+  <text x="48" y="27" font-family="'Archivo', -apple-system, system-ui, sans-serif" font-weight="800" font-size="20" letter-spacing="0.14em" fill="currentColor">PALA</text>
+  <text x="114" y="27" font-family="'Archivo', -apple-system, system-ui, sans-serif" font-weight="300" font-size="20" letter-spacing="0.22em" fill="currentColor" opacity="0.75">TREKKING</text>
+  <text x="49" y="38" font-family="'IBM Plex Mono', monospace" font-weight="500" font-size="7" letter-spacing="0.32em" fill="#e4583e">NEPAL · 8,848M</text>
+</svg>

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { getSiteUrl } from "@/lib/site-url";
 
-const SITE = process.env.SITE_URL ?? "http://localhost:3000";
+const SITE = getSiteUrl();
 
 export default function robots(): MetadataRoute.Robots {
   return { rules: [{ userAgent: "*", allow: "/", disallow: ["/admin", "/book/"] }], sitemap: `${SITE}/sitemap.xml` };
