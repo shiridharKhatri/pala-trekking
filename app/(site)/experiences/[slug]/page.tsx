@@ -10,7 +10,8 @@ import { date } from "@/lib/format";
 import { DetailSkeleton } from "@/components/Skeletons";
 
 export async function generateStaticParams() {
-  return (await getPublishedExperiences()).map((e) => ({ slug: e.slug }));
+  const exps = await getPublishedExperiences();
+  return exps.length ? exps.map((e) => ({ slug: e.slug })) : [{ slug: "_" }];
 }
 
 export async function generateMetadata({ params }: PageProps<"/experiences/[slug]">): Promise<Metadata> {

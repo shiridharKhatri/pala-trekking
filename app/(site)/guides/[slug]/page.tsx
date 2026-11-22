@@ -11,7 +11,8 @@ import { RichText } from "@/components/RichText";
 import { DetailSkeleton } from "@/components/Skeletons";
 
 export async function generateStaticParams() {
-  return (await getPublishedGuides()).map((g) => ({ slug: g.slug }));
+  const guides = await getPublishedGuides();
+  return guides.length ? guides.map((g) => ({ slug: g.slug })) : [{ slug: "_" }];
 }
 
 export async function generateMetadata({ params }: PageProps<"/guides/[slug]">): Promise<Metadata> {

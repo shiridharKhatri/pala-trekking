@@ -12,7 +12,8 @@ import { date } from "@/lib/format";
 import { DetailSkeleton } from "@/components/Skeletons";
 
 export async function generateStaticParams() {
-  return (await getPublishedPosts()).map((p) => ({ slug: p.slug }));
+  const posts = await getPublishedPosts();
+  return posts.length ? posts.map((p) => ({ slug: p.slug })) : [{ slug: "_" }];
 }
 
 export async function generateMetadata({ params }: PageProps<"/blog/[slug]">): Promise<Metadata> {

@@ -25,7 +25,7 @@ import { SaveToggle } from "@/components/Saved";
 
 export async function generateStaticParams() {
   const slugs = await getPublishedSlugs();
-  return slugs.map((slug) => ({ slug }));
+  return slugs.length ? slugs.map((slug) => ({ slug })) : [{ slug: "_" }];
 }
 
 export async function generateMetadata({ params }: PageProps<"/treks/[slug]">): Promise<Metadata> {
